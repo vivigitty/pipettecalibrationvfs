@@ -1,0 +1,42 @@
+
+# Node.js
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Environment variables and secrets
+.env*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test reports
+coverage/
+test-results/
+playwright-report/
+
+# Database files and backups
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.bak
+*.backup
+
+# Logs
+*.log
+npm-debug.log*
+
+# Operating system and editors
+.DS_Store
+Thumbs.db
+.vscode/
+# Temporarily exclude Word document
+/VFL Sciences.docx

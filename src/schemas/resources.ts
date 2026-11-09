@@ -1,0 +1,29 @@
+import Decimal from 'decimal.js';
+import { z } from 'zod';
+
+const text = (max = 100) => z.string().trim().min(1).max(max);
+const optionalText = (max = 100) => z.string().trim().max(max).nullish().transform((value) => value || null);
+export const decimalSchema = z.string().regex(/^\d+(\.\d+)?$/, 'Enter a positive decimal').max(30).pipe(z.string().refine((value) => new Decimal(value).gt(0), 'Must be greater than zero'));
+const boundedDecimal = (min: string, max: string) => z.string().regex(/^\d+(\.\d+)?$/).max(30).pipe(z.string().refine((value) => new Decimal(value).gte(min) && new Decimal(value).lte(max), `Must be between ${min} and ${max}`));
+export const dateSchema = z.iso.date();
+export const idSchema = z.uuid();
+export const resourceSchema = z.enum(['customers','ranges','assets','instruments','lab-dimensions','users']);
+export type Resource = z.infer<typeof resourceSchema>;
+export const customerSchema = z.strictObject({ customerName: text(200), department: text(150), address1: text(250), address2: optionalText(250), email: z.email(), phone1: text(30), phone2: optionalText(30), contactName: text(150) });
+export const rangeSchema = z.strictObject({ rangeLabel: text(30), channel: z.enum(['single','eight','twelve']), make: text(), model: text(), limits: z.array(z.strictObject({ testPointPct: z.union([z.literal(10),z.literal(50),z.literal(100)]), inaccuracyLimitPct: decimalSchema, imprecisionLimitPct: decimalSchema })).min(1).max(3) });
+export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: text() });
+export const assetBatchSchema = z.strictObject({ assets: z.array(assetSchema).min(1).max(50) });
+export const instrumentSchema = z.strictObject({ instrumentType: z.enum(['balance','air_thermometer','water_thermometer']), makeModel: text(150), serialNumber: text(), calibrationDueDate: dateSchema });
+export const labSchema = z.strictObject({ processDate: dateSchema, serviceMode: z.enum(['onsite','offsite']), balanceInstrumentId: idSchema, airInstrumentId: idSchema, waterThermometerInstrumentId: idSchema, ddWaterTempC: boundedDecimal('15','30'), roomTempC: boundedDecimal('15','30'), humidityPct: boundedDecimal('0','100'), airPressureHpa: boundedDecimal('800','1050') });
+export const damageSchema = z.strictObject({ observationNotes: text(3000), damagedPartName: text(150), partReplaced: z.boolean(), replacedPartSerialNumber: optionalText(), partCost: z.string().regex(/^\d+(\.\d{1,2})?$/).nullish() }).superRefine((data, ctx) => {
+  if (data.partReplaced && (!data.replacedPartSerialNumber || !data.partCost)) ctx.addIssue({ code: 'custom', path: ['replacedPartSerialNumber'], message: 'Replacement serial and cost are required' });
+});
+export const startSessionSchema = z.strictObject({ labDimensionId: idSchema, nextCalibrationMonths: z.coerce.number().int().min(1).max(60), oneDispensingPerChannel: z.boolean().default(false) });
+export const readingsSchema = z.strictObject({ masses: z.array(decimalSchema).length(10) });
+export const userSchema = z.strictObject({ email: z.email(), displayName: text(120), externalSubject: text(255), role: z.enum(['technician','admin','executive']), isActive: z.boolean().default(true) });
+export const userUpdateSchema = z.strictObject({ role: userSchema.shape.role.optional(),isActive: z.boolean().optional(),displayName: userSchema.shape.displayName.optional() }).refine((value) => Object.keys(value).length>0,'Provide at least one change');
+export const voidSchema = z.strictObject({ reason: text(2000) });
+export const querySchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25), search: z.string().max(200).default(''), progress: z.enum(['not_started','in_progress','completed']).optional(), customerId: idSchema.optional(), dueDate: dateSchema.optional() });
+export const rowSchema = z.record(z.string(), z.unknown());
+export const listSchema = z.object({ data: z.array(rowSchema), meta: z.object({ page: z.number(), pageSize: z.number(), total: z.number() }) });
+export type Row = z.infer<typeof rowSchema>;

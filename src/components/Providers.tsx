@@ -1,0 +1,10 @@
+'use client';
+
+import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
+import { useState,type ReactNode } from 'react';
+import { NavigationGuard } from './NavigationGuard';
+
+export function Providers({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 15000,retry: 1,refetchOnWindowFocus: false } } }));
+  return <QueryClientProvider client={client}><NavigationGuard />{children}</QueryClientProvider>;
+}
