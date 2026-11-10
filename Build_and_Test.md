@@ -90,7 +90,7 @@ Plus: `toVolumeUl(0.0020, 1.0052)` = 2.0104 (prints 2.01); mean actual volumes =
 **Success:** A route that throws `ConflictError` returns HTTP 409 with JSON containing `type, title, status, detail, code, requestId`; a route throwing a plain `Error` returns 500 with **no stack trace** in the body; every log line in a test run contains `requestId`.
 
 ### Task 15 — Authentication and RBAC [FR-19, NFR-S1, S2]
-Auth.js with OIDC (mock IdP in tests), `requireRole()` helper, middleware.
+Supabase Auth email/password signup and verification with Auth.js app sessions, active app-user allowlist linked by Supabase Auth UUID, authorization helper, middleware. Test invalid passwords, unconfirmed accounts, inactive request creation only after verified sign-in, no self-assigned privileges, admin approval/role assignment, suspended users remaining blocked, and successful approved sign-in. Enable signup with email confirmation and configure custom SMTP for arbitrary email recipients. No signup grants access automatically.
 **Success:** Unauthenticated `GET /api/v1/customers` → 401; `executive` calling `POST /api/v1/customers` → 403; `technician` → 201 (valid body); session cookie has `HttpOnly`, `Secure`, `SameSite=Lax`.
 
 ### Task 16 — Audit service [FR-20]

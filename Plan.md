@@ -15,7 +15,7 @@ Traces to `Spec.md` (FR/NFR/MN) and obeys `Constitution.md`.
 | **ORM / migrations** | **Prisma 6** | Type-safe client, reviewable SQL migrations, `@map` allows snake_case DB with camelCase TS. Raw SQL migrations are used for `CHECK`s/triggers/partial indexes Prisma can't express |
 | **Validation** | **Zod** | Shared schemas; infers types; generates OpenAPI via `zod-to-openapi` |
 | **Numerics / dates** | `decimal.js`, `date-fns` | Exact arithmetic (MN-02); proven calendar-month math (`addMonths`) |
-| **Auth** | **Auth.js (NextAuth v5)** with OIDC provider (Microsoft Entra ID) | SSO for enterprise; roles mapped from IdP groups into the `users` table |
+| **Auth** | **Supabase Auth** email/password verification + **Auth.js (NextAuth v5)** app sessions | Self-service signup and email confirmation; verified first sign-in creates an inactive request linked by Auth UUID. Admins assign roles and approve access; active status remains server-enforced |
 | **Styling / UI kit** | **Tailwind CSS 4 + shadcn/ui (Radix primitives)** | Accessible primitives (WCAG), zero runtime CSS cost, copy-in components keep bundle small |
 | **Forms** | React Hook Form + `@hookform/resolvers/zod` | Performance on large grids; shared validation |
 | **Server state** | TanStack Query v5 | Caching, invalidation, optimistic autosave |
@@ -38,7 +38,7 @@ Traces to `Spec.md` (FR/NFR/MN) and obeys `Constitution.md`.
 
 | Route | Purpose | Spec |
 |---|---|---|
-| `/login` | SSO sign-in | FR-19 |
+| `/login` | Supabase email/password sign-in | FR-19 |
 | `/customers`, `/customers/new` | List + create customer | FR-01 |
 | `/ranges`, `/ranges/new` | Search/create Range+Channel+Make+Model; capture limits | FR-02–04 |
 | `/assets`, `/assets/new` | Asset list/filter; batch registration grid | FR-05, FR-21 |

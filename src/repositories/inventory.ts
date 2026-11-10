@@ -32,7 +32,8 @@ export async function listInventory(resource: Resource, query: z.infer<typeof qu
       return { data,meta: { ...query,total } };
     }
     case 'users': {
-      const [data,total] = await db.$transaction([db.user.findMany({ ...paging,orderBy: { displayName: 'asc' } }),db.user.count()]);
+      const where = { OR: [{ email: contains }, { displayName: contains }] };
+      const [data,total] = await db.$transaction([db.user.findMany({ where,...paging,orderBy: [{ isActive: 'asc' }, { createdAt: 'desc' }] }),db.user.count({ where })]);
       return { data,meta: { ...query,total } };
     }
   }

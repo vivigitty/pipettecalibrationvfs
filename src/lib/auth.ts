@@ -1,30 +1,25 @@
 import NextAuth from 'next-auth';
-import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
-import { z } from 'zod';
-import { db } from './db';
-
-const profileSchema = z.object({ sub: z.string().min(1), email: z.email().optional(), preferred_username: z.email().optional() });
+import Credentials from 'next-auth/providers/credentials';
+import { verifyPassword } from './password-auth';
+import { requestAccess } from './access-request';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [MicrosoftEntraID({
-    clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID ?? '',
-    clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET ?? '',
-    issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER ?? 'https://login.microsoftonline.com/common/v2.0',
+  providers: [Credentials({
+    credentials: { email: { type: 'email' }, password: { type: 'password' } },
+    async authorize(credentials) {
+      const identity = await verifyPassword(credentials);
+      if (!identity) return null;
+      return requestAccess(identity);
+    },
   })],
   session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
   callbacks: {
-    async signIn({ profile }) {
-      const parsed = profileSchema.safeParse(profile);
-      if (!parsed.success) return false;
-      const user = await db.user.findUnique({ where: { externalSubject: parsed.data.sub } });
-      return user?.isActive === true;
-    },
-    jwt({ token, profile }) {
-      if (profile) token.oidcSubject = profileSchema.parse(profile).sub;
+    jwt({ token, user }) {
+      if (user) token.supabaseSubject = user.id;
       return token;
     },
     session({ session, token }) {
-      if (typeof token.oidcSubject === 'string') session.user.id = token.oidcSubject;
+      session.user.id = typeof token.supabaseSubject === 'string' ? token.supabaseSubject : '';
       return session;
     },
   },

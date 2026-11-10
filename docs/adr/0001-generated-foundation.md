@@ -22,7 +22,7 @@ The certificate draft must not be called an exact sample replica. Sample PDF/log
 | @prisma/client | Parameterized PostgreSQL access | Apache-2.0 | Server |
 | zod | HTTP/env/DB JSON validation | MIT | Shared/client |
 | decimal.js, date-fns | Exact measurements/calendar dates | MIT | Domain; decimal form validation |
-| next-auth | Specified OIDC SSO | ISC | Server |
+| next-auth | App sessions after Supabase email/password verification | ISC | Server |
 | @tanstack/react-query | Server state and mutation invalidation | MIT | Client |
 | react-hook-form, @hookform/resolvers | Draft form state/Zod validation | MIT | Client |
 | lucide-react | Consistent accessible tool icons | ISC | Client, tree-shaken |

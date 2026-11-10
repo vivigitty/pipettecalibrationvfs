@@ -20,7 +20,7 @@ const config: Record<Resource,{ title: string; subtitle: string; columns: [strin
   ranges: { title: 'Ranges & limits',subtitle: 'Pipette configuration register',action: 'Add configuration',columns: [['rangeLabel','Range (uL)'],['make','Manufacturer'],['model','Model'],['channel','Channel'],['timesToTest','Test points'],['limits','Limits']] },
   instruments: { title: 'Lab instruments',subtitle: 'Traceable calibration equipment',action: 'Add instrument',columns: [['makeModel','Make / model'],['instrumentType','Type'],['serialNumber','Serial number'],['calibrationDueDate','Calibration due']] },
   'lab-dimensions': { title: 'Lab conditions',subtitle: 'Environmental conditions by sitting',action: 'New lab sitting',columns: [['processDate','Process date'],['serviceMode','Mode'],['ddWaterTempC','Water (C)'],['roomTempC','Room (C)'],['humidityPct','Humidity (%)'],['airPressureHpa','Pressure (hPa)'],['zCorrectionValue','Z (uL/mg)']] },
-  users: { title: 'User access',subtitle: 'OIDC identity allowlist',action: 'Add user',columns: [['displayName','Name'],['email','Email'],['role','Role'],['isActive','Active'],['externalSubject','OIDC subject']] },
+  users: { title: 'User access',subtitle: 'Access requests and approved users',action: 'Add user',columns: [['displayName','Name'],['email','Email'],['role','Role'],['isActive','Access approval'],['externalSubject','Supabase user UUID']] },
 };
 
 function cell(row: Row, key: string) {
