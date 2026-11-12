@@ -18,7 +18,7 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
   throw new NotFoundError('Endpoint not found');
 }
 
-export async function writeApi(actor: Actor, method: string, parts: string[], raw: unknown, requestId: string, _idempotencyKey: string) {
+export async function writeApi(actor: Actor, method: string, parts: string[], raw: unknown, requestId: string) {
   const [resource,id,action,lot] = parts;
   if (method==='POST' && parts.length===1) return createResource(actor,resourceSchema.parse(resource),raw,requestId);
   const resourceId = idSchema.parse(id);

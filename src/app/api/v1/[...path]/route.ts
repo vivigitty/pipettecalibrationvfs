@@ -22,7 +22,7 @@ async function handle(request: Request, context: Context) {
 
 async function mutation(request: Request, actor: Awaited<ReturnType<typeof currentActor>>, path: string[], requestId: string) {
   protectMutation(request,actor.id);
-  return writeApi(actor,request.method,path,await readJson(request),requestId,request.headers.get('idempotency-key') ?? '');
+  return writeApi(actor,request.method,path,await readJson(request),requestId);
 }
 
 export const GET = handle;

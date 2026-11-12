@@ -20,7 +20,7 @@ describe('Verified signup access requests', () => {
   it('never reactivates a rejected or disabled account', async () => {
     upsert.mockResolvedValue({ ...identity, isActive: false, role: 'admin' });
     expect(await requestAccess(identity)).toBeNull();
-    expect(upsert.mock.calls[0]?.[0].update).toEqual({});
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ update: {} }));
   });
   it('allows an approved account with a matching email', async () => {
     upsert.mockResolvedValue({ email: 'PERSON@example.org', isActive: true, displayName: 'Lab User' });
