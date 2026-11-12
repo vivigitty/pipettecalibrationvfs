@@ -16,7 +16,6 @@ export async function startSession(actor: Actor, assetId: string, raw: unknown, 
     const previous = await tx.calibrationSession.findFirst({ where: { assetId },orderBy: { sessionNo: 'desc' } });
     if (previous?.status==='in_progress') throw new ConflictError('A calibration is already in progress');
     if (previous?.finalStatus==='pass' && actor.role!=='admin') throw new ConflictError('Only an administrator can initiate a correction to a passed session');
-    if (await tx.assetCertification.findFirst({ where: { assetId,voidedAt: null } })) throw new ConflictError('Void the active certificate before starting a correction');
     const [range,lab] = await Promise.all([tx.rangeThreshold.findUniqueOrThrow({ where: { id: asset.rangeThresholdId } }),tx.labDimension.findUnique({ where: { id: input.labDimensionId } })]);
     if (!lab) throw new NotFoundError('Lab sitting not found');
     const limits = await tx.rangeThresholdLimit.findMany({ where: { rangeThresholdId: range.id } });
@@ -97,7 +96,6 @@ export async function createDamage(actor: Actor, assetId: string, raw: unknown, 
   const input = damageSchema.parse(raw);
   return transaction(async (tx) => {
     await lockAsset(tx,assetId);
-    if (await tx.assetCertification.findFirst({ where: { assetId,voidedAt: null } })) throw new ConflictError('Damage records cannot change after certification');
     const row = await tx.assetDamage.create({ data: { ...input,partCost: input.partCost ?? null,assetId,createdBy: actor.id } });
     await recordAudit(tx,actor,requestId,'asset_damage',row.id,'create');
     const { partCost,...safe } = row;

@@ -19,7 +19,7 @@ Add ESLint (strict-type-checked + a11y + security + import-cycle rules), Prettie
 **Success:** Committing a file containing `const x: any = 1` is **rejected** by the pre-commit hook; committing a clean file with message `feat: x` succeeds; message `bad message` is rejected.
 
 ### Task 3 — Hosted database and env validation
-Supabase-managed PostgreSQL for MVP, Prisma runtime and migration URLs (`DATABASE_URL`, `DIRECT_URL`), optional `docker-compose.yml` PostgreSQL 16/MinIO for isolated tests, `src/lib/env.ts` Zod-validated env, `.env.example`.
+Supabase-managed PostgreSQL for MVP, Prisma runtime and migration URLs (`DATABASE_URL`, `DIRECT_URL`), optional `docker-compose.yml` PostgreSQL 16 for isolated tests, `src/lib/env.ts` Zod-validated env, `.env.example`.
 **Success:** the app connects to the configured Supabase project; Prisma migrations succeed using `DIRECT_URL` while application queries use `DATABASE_URL`; starting live mode with `DATABASE_URL` removed exits non-zero with a message naming `DATABASE_URL`. Integration tests use an isolated PostgreSQL container, never the shared Supabase project.
 
 ### Task 4 — CI pipeline and budgets
@@ -136,7 +136,7 @@ Capture IP/location server-side; DTO masking; exec panel.
 `CertificateDocument` reproducing the VFL template; confirm `@react-pdf/renderer` vs. HTML→PDF fallback.
 **Success:** Rendering the golden fixture (the NUCSER / Gilson Pipetmann P20 data) produces a one-page PDF ≤ 1 MB in ≤ 5 s whose extracted text contains: inventory no. 2026090843, S.No LK20869, `2-20`, all 30 masses (4 dp) and volumes (2 dp), the six inaccuracy/imprecision actuals and limits, Z 1.0052, 1008.8 hPa, both instruments with cal-due dates, "Pass", "Surendar R", `1-Oct-26`, `30-Sep-27`; "Nil" appears for damaged and replaced parts; an 8-channel per-channel session renders page 1 (24-lot result matrix) and a page 2 raw-readings annexure; a Fail session renders no certificate; **visual-regression** against VFL's approved sample is within the agreed tolerance and signed off by VFL.
 ### Task 27 — Certificate gate, storage, one-per-asset [FR-17, FR-18, MN-13]
-`POST /sessions/{id}/certificates`, object storage, `asset_certifications`.
+`GET /sessions/{id}/certificate-download`, on-demand PDF rendering from session snapshot data.
 **Success:** Calling it for a `fail` or `in_progress` session → 422 even if called directly via API; a `pass` session → 201, the object exists in storage as `{inventory_number}_{range}ul.pdf`, SHA-256 equals the stored file's hash, and `asset_id`, `customer_id`, `calibration_session_id` are set; a second call for the same asset → **409** `CERTIFICATE_EXISTS` (the stored copy is served instead); an admin void (with reason) then reissue succeeds and leaves exactly **1** active row plus 1 voided row; `executive` and `technician` cannot void (403); the voided file remains retrievable by admin.
 ---
 

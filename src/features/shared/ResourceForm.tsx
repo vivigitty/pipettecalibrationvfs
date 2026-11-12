@@ -4,13 +4,18 @@ import { Copy,Save,X } from 'lucide-react';
 import { useState } from 'react';
 import { Controller } from 'react-hook-form';
 import { EntityPicker } from '@/components/ui/EntityPicker';
-import { type Resource,type Row,listSchema } from '@/schemas/resources';
+import { type Resource,type Row,listSchema,rowSchema } from '@/schemas/resources';
 import { api,rows,text } from './api';
 import { fields } from './form-fields';
 import { useResourceForm,zLabel } from './use-resource-form';
 
-export function ResourceForm({ resource,isReadOnly,onClose,initialRow }: { resource: Exclude<Resource,'assets'>; isReadOnly: boolean; onClose: () => void; initialRow?: Row }) {
-  const { form,values,plan,zFactor,save } = useResourceForm(resource,onClose,initialRow);
+export function ResourceForm({ resource,isReadOnly,onClose,initialRow,onSaved,prefillValues }: { resource: Exclude<Resource,'assets'>; isReadOnly: boolean; onClose: () => void; initialRow?: Row; onSaved?: (row: Row) => void; prefillValues?: Record<string,string> }) {
+  const { form,values,plan,zFactor,save } = useResourceForm(resource,(saved) => {
+    const parsed = saved ? rowSchema.safeParse(saved) : null;
+    if (parsed?.success) onSaved?.(parsed.data);
+    onClose();
+  },initialRow,prefillValues);
+  const [quickInstrumentTarget,setQuickInstrumentTarget] = useState<{ fieldName: string; instrumentType: string } | null>(null);
   const [copyError,setCopyError] = useState('');
   const copyLimits = async () => {
     try {
@@ -25,8 +30,14 @@ export function ResourceForm({ resource,isReadOnly,onClose,initialRow }: { resou
     } catch (error) { setCopyError(error instanceof Error ? error.message : 'Could not copy limits'); }
   };
   return <section className="form-section"><div className="section-heading"><h2>New {resource==='lab-dimensions' ? 'lab sitting' : resource==='ranges' ? 'range configuration' : resource.slice(0,-1)}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close form" title="Close"><X size={18} /></button></div>
+    {quickInstrumentTarget ? <ResourceForm resource="instruments" isReadOnly={isReadOnly} prefillValues={{ instrumentType: quickInstrumentTarget.instrumentType }} onClose={() => { setQuickInstrumentTarget(null); }} onSaved={(row) => {
+      const id = text(row,'id');
+      if (!id) return;
+      form.setValue(quickInstrumentTarget.fieldName,id);
+      setQuickInstrumentTarget(null);
+    }} /> : null}
     <form onSubmit={(event) => { void form.handleSubmit((draft) => { save.mutate(draft); })(event); }}>{initialRow ? <h3>{text(initialRow,'make')} / {text(initialRow,'model')} · {text(initialRow,'rangeLabel')} uL</h3> : <div className="form-grid">{fields[resource].map((field) => <div key={field.name} className="field">
-      {field.resource ? <Controller name={field.name} control={form.control} render={({ field: controlled }) => <EntityPicker resource={field.resource ?? 'instruments'} label={field.label} value={controlled.value} onChange={controlled.onChange} filter={(row) => !field.instrumentType || (text(row,'instrumentType')===field.instrumentType && text(row,'calibrationDueDate').slice(0,10)>=(values.processDate ?? ''))} />} /> : <label>{field.label}{field.isOptional ? <span className="optional"> (optional)</span> : null}
+      {field.resource ? <Controller name={field.name} control={form.control} render={({ field: controlled }) => <EntityPicker resource={field.resource ?? 'instruments'} label={field.label} value={controlled.value} onChange={controlled.onChange} filter={(row) => !field.instrumentType || (text(row,'instrumentType')===field.instrumentType && text(row,'calibrationDueDate').slice(0,10)>=(values.processDate ?? ''))} {...(resource==='lab-dimensions' && field.resource==='instruments' && field.instrumentType ? { onCreateRequest: () => { setQuickInstrumentTarget({ fieldName: field.name,instrumentType: field.instrumentType ?? 'balance' }); },createLabel: 'Add lab instrument' } : {})} />} /> : <label>{field.label}{field.isOptional ? <span className="optional"> (optional)</span> : null}
         {field.type==='select' ? <select {...form.register(field.name)}>{field.options?.map((option) => <option key={option} value={option}>{option.replaceAll('_',' ')}</option>)}</select> : <input {...form.register(field.name)} required={!field.isOptional} type={field.type==='date' || field.type==='email' ? field.type : 'text'} inputMode={field.type==='decimal' ? 'decimal' : undefined} />}</label>}
       {form.formState.errors[field.name]?.message ? <span className="field-error">{String(form.formState.errors[field.name]?.message)}</span> : null}
     </div>)}</div>}

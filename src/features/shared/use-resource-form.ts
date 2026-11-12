@@ -11,9 +11,9 @@ import { fields } from './form-fields';
 const draftSchema = z.record(z.string(),z.string());
 const planSchema = z.object({ timesToTest: z.number(),repeats: z.number(),points: z.array(z.object({ pct: z.number(),volume: z.string() })) });
 
-export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: () => void, initialRow?: Row) {
+export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (saved?: unknown) => void, initialRow?: Row, prefillValues?: Record<string,string>) {
   const client = useQueryClient();
-  const defaultValues = Object.fromEntries(fields[resource].map((field) => [field.name,initialRow ? text(initialRow,field.name) : field.type==='select' ? field.options?.[0] ?? '' : field.type==='date' ? new Date().toISOString().slice(0,10) : '']));
+  const defaultValues = { ...Object.fromEntries(fields[resource].map((field) => [field.name,initialRow ? text(initialRow,field.name) : field.type==='select' ? field.options?.[0] ?? '' : field.type==='date' ? new Date().toISOString().slice(0,10) : ''])),...(prefillValues ?? {}) };
   if (initialRow?.limits) for (const limit of rows(initialRow.limits)) {
     defaultValues[`inaccuracy${text(limit,'testPointPct')}`]=text(limit,'inaccuracyLimitPct');
     defaultValues[`imprecision${text(limit,'testPointPct')}`]=text(limit,'imprecisionLimitPct');
@@ -25,7 +25,7 @@ export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (
   const save = useMutation({ mutationFn: async (draft: Record<string,string>) => {
     const payload = buildPayload(resource,draft,plan.data?.points ?? []);
     return initialRow && resource==='ranges' ? api(`ranges/${text(initialRow,'id')}/limits`,'PATCH',{ limits: rangeSchema.parse(payload).limits }) : api(resource,'POST',payload);
-  },onSuccess: async () => { await client.invalidateQueries({ queryKey: [resource] }); onSaved(); },onError: (error) => {
+  },onSuccess: async (saved) => { await client.invalidateQueries({ queryKey: [resource] }); onSaved(saved); },onError: (error) => {
     if (error instanceof ApiError) for (const issue of error.fields) form.setError(issue.field,{ message: issue.message });
     if (error instanceof z.ZodError) for (const issue of error.issues) form.setError(String(issue.path[0]),{ message: issue.message });
   } });

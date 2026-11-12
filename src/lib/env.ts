@@ -9,9 +9,6 @@ const envSchema = z.object({
   SUPABASE_URL: z.url().optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
   Z_SOURCE_VERSION: z.string().default('ISO8655-6:2022-TableA1-transcribed-UNVERIFIED'),
-  S3_ENDPOINT: z.url().default('http://127.0.0.1:9000'),
-  S3_REGION: z.string().default('us-east-1'), S3_BUCKET: z.string().default('vfl-certificates'),
-  S3_ACCESS_KEY_ID: z.string().optional(), S3_SECRET_ACCESS_KEY: z.string().optional(),
   CERTIFICATE_TEMPLATE_APPROVED: z.enum(['true', 'false']).default('false'),
   CERTIFICATE_LOGO_URL: z.string().optional(), CERTIFICATE_FOOTER: z.string().optional(),
 }).superRefine((env, ctx) => {

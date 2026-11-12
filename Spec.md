@@ -45,7 +45,7 @@ An enterprise web application that lets VFL Sciences engineers register customer
 15. Executive-only metadata captured silently: device IP and entry location. (FR-16)
 
 ### 3.5 Certificate
-16. When Final Status = Pass, a **Generate PDF** button is enabled; the PDF follows the existing VFL template (see FR-25). **One** certificate is stored per asset in `asset_certifications`. (FR-17, FR-18, FR-25)
+16. When Final Status = Pass, a **Download Certificate** button is enabled; the PDF follows the existing VFL template (see FR-25) and is generated on demand from stored calibration/session data. (FR-17, FR-18, FR-25)
 
 ### 3.6 Platform
 17. Authentication (SSO/OIDC), role-based access, audit log. (FR-19, FR-20)
@@ -93,7 +93,7 @@ An enterprise web application that lets VFL Sciences engineers register customer
 | FR-15 | Final Status computed server-side only. A volume passes when inaccuracy and imprecision are within limits (inclusive); the session passes only if **every volume** passes. A failed session cannot produce a certificate |
 | FR-16 | Device IP and entry location captured server-side and visible only to Executive role |
 | FR-17 | "Generate PDF" enabled only if `final_status = pass`, all readings present, limits present |
-| FR-18 | PDF stored in object storage; **at most one active** `asset_certifications` row per asset (SHA-256, template version, linked passing session). Re-download serves the stored file; an admin may *void* (reason, audit) and reissue |
+| FR-18 | Certificate PDF is generated on demand from the linked passing session snapshot data; no object-storage persistence is required in MVP/UAT |
 | FR-19 | All write endpoints require authentication and role authorization |
 | FR-20 | All inserts/updates to business tables are audit-logged with actor and request ID |
 | FR-21 | Asset list: filter by customer, progress, due date; text search by serial/inventory/invoice |
@@ -110,7 +110,7 @@ An enterprise web application that lets VFL Sciences engineers register customer
 - NFR-S2: RBAC enforced on the server for every endpoint and server action (UI hiding is not security).
 - NFR-S3: All inputs validated with a shared schema (Zod) on client and server.
 - NFR-S4: OWASP ASVS Level 2 as the baseline; CSRF protection, secure/HttpOnly/SameSite cookies, CSP headers.
-- NFR-S5: TLS 1.2+ in transit; encryption at rest for database and object storage.
+- NFR-S5: TLS 1.2+ in transit; encryption at rest for database.
 - NFR-S6: Secrets only from environment/secret manager.
 - NFR-S7: Exec-only fields stripped server-side from API responses for non-exec roles.
 - NFR-S8: Rate limiting on auth and write endpoints.

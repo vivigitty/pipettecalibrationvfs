@@ -6,7 +6,7 @@ export class ApiError extends Error {
   constructor(message: string, public readonly fields: { field: string; message: string }[] = []) { super(message); }
 }
 export async function api(path: string, method = 'GET', data?: unknown): Promise<unknown> {
-  const response = await fetch(`/api/v1/${path}`, { method,headers: { 'Content-Type': 'application/json',...(path.endsWith('/certificates') ? { 'Idempotency-Key': crypto.randomUUID() } : {}) },...(data!==undefined ? { body: JSON.stringify(data) } : {}) });
+  const response = await fetch(`/api/v1/${path}`, { method,headers: { 'Content-Type': 'application/json' },...(data!==undefined ? { body: JSON.stringify(data) } : {}) });
   const result: unknown = await response.json();
   if (!response.ok) {
     const problem = problemSchema.safeParse(result);

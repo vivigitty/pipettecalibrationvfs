@@ -27,7 +27,6 @@ The certificate draft must not be called an exact sample replica. Sample PDF/log
 | react-hook-form, @hookform/resolvers | Draft form state/Zod validation | MIT | Client |
 | lucide-react | Consistent accessible tool icons | ISC | Client, tree-shaken |
 | @react-pdf/renderer | Versioned certificate draft | MIT | Server only |
-| @aws-sdk/client-s3 | Immutable S3-compatible storage | Apache-2.0 | Server only |
 | pino | Redacted structured error logging | MIT | Server only |
 | csv-parse | Structured ISO CSV parsing | MIT | Server/test/seed |
 

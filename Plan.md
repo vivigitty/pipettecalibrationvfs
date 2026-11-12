@@ -21,14 +21,14 @@ Traces to `Spec.md` (FR/NFR/MN) and obeys `Constitution.md`.
 | **Server state** | TanStack Query v5 | Caching, invalidation, optimistic autosave |
 | **Tables** | TanStack Table v8 | Headless, small, server-side pagination |
 | **PDF generation** | **`@react-pdf/renderer`** (server-side) | No headless browser to operate; deterministic output; template is code (versioned). *Fallback:* Playwright→HTML-to-PDF if the existing template is too complex to reproduce (the sample is a one-page A4 layout of tables and text, so this is expected to work; confirm at Task 26 once multi-channel samples arrive) |
-| **Object storage** | S3-compatible (AWS S3 / MinIO locally) | Certificates stored immutably; DB keeps key + checksum |
+| **Certificate delivery** | On-demand PDF download (server-generated) | Avoids object-storage overhead for MVP/UAT; no persisted blob storage required |
 | **Logging / errors** | `pino` (JSON) + Sentry | Structured logs with request IDs; error tracking |
 | **Unit / integration tests** | **Vitest** + **Testcontainers (Postgres)** | Fast; real DB for repository tests |
 | **Component tests** | Testing Library + `jest-axe` | Behavior & accessibility |
 | **E2E tests** | **Playwright** + `@axe-core/playwright` | Critical flows across browsers |
 | **CI/CD** | GitHub Actions | Type-check, lint, tests, bundle budget, migration check, container build |
-| **Deployment** | MVP: app hosting + Supabase-managed PostgreSQL + S3-compatible object storage; later container hosting remains an option | No local database installation for MVP; keep migration and runtime credentials separate |
-| **Local dev** | Supabase for application data; Docker Compose Postgres + MinIO remain optional for isolated integration tests | Avoid requiring a local PostgreSQL installation for normal MVP development |
+| **Deployment** | MVP: app hosting + Supabase-managed PostgreSQL; later container hosting remains an option | No local database installation for MVP; keep migration and runtime credentials separate |
+| **Local dev** | Supabase for application data; Docker Compose Postgres remains optional for isolated integration tests | Avoid requiring a local PostgreSQL installation for normal MVP development |
 
 ---
 
@@ -87,7 +87,7 @@ AppShell (nav, user menu, role-aware links)
 pipette-calibration/
 ├── .github/workflows/ci.yml
 ├── .husky/                         # pre-commit hooks
-├── docker-compose.yml              # optional local postgres + minio
+├── docker-compose.yml              # optional local postgres
 ├── Dockerfile
 ├── Constitution.md  Spec.md  Plan.md  Build_and_Test.md  Database_Design.md
 ├── docs/
@@ -124,7 +124,7 @@ pipette-calibration/
 │   │   │   ├── sessions/[sessionId]/start/route.ts
 │   │   │   ├── sessions/[sessionId]/lots/[lotNo]/route.ts
 │   │   │   ├── sessions/[sessionId]/complete/route.ts
-│   │   │   ├── sessions/[sessionId]/certificates/route.ts
+│   │   │   ├── sessions/[sessionId]/certificate-download/route.ts
 │   │   │   └── health/route.ts
 │   │   └── middleware.ts           # auth gate + security headers
 │   ├── domain/                     # PURE, no I/O
@@ -151,7 +151,7 @@ pipette-calibration/
 │   │   ├── CertificateDocument.tsx # the template
 │   │   └── template-version.ts
 │   ├── lib/
-│   │   ├── auth.ts  rbac.ts  db.ts  env.ts  logger.ts  errors.ts  storage.ts  request-context.ts
+│   │   ├── auth.ts  rbac.ts  db.ts  env.ts  logger.ts  errors.ts  request-context.ts
 │   ├── schemas/                    # Zod schemas (shared client/server)
 │   └── components/ui/              # shadcn primitives
 ├── package.json  tsconfig.json  eslint.config.mjs  vitest.config.ts  playwright.config.ts
@@ -173,14 +173,14 @@ pipette-calibration/
 | **Lot plan generation** | `lots.ts` returns a deterministic plan `[ {lotNo, nominalVolumeUl, channelNo?} ]`; the service inserts the lots on Start |
 | **Server enforces state machine** | `not_started → in_progress → completed`; certificate endpoint re-checks `final_status = pass` (MN-13) |
 | **Exec-only data** | IP taken from trusted proxy header (`x-forwarded-for` validated); location resolved from IP geo lookup or consented browser geolocation; DTO mappers strip for non-exec (MN-12) |
-| **One certificate per asset** | Stored PDF is re-served, never regenerated silently; admin void-and-reissue is audited; partial unique index enforces one active certificate |
+| **Certificate output** | PDF is generated from completed passing sessions at download time using snapshot-backed calibration data |
 | **Reporting-ready** | `due_date`, `process_date`, `start_time/end_time`, customer/range/channel FKs are indexed so v1.1 reports are plain SQL |
 
 ---
 
 ## 5. Implementation Approach (Technical Strategy)
 
-1. **Bootstrap** — scaffold Next.js + TypeScript strict, ESLint/Prettier/Husky, Vitest, Playwright, optional Docker Compose (Postgres + MinIO) for isolated local tests, CI pipeline with bundle-size check. *Why first:* quality gates exist before any feature code.
+1. **Bootstrap** — scaffold Next.js + TypeScript strict, ESLint/Prettier/Husky, Vitest, Playwright, optional Docker Compose (Postgres) for isolated local tests, CI pipeline with bundle-size check. *Why first:* quality gates exist before any feature code.
 2. **Database foundation** — write Prisma schema + raw-SQL migration for constraints/triggers; seed roles and Z table; integration tests assert each constraint rejects bad data.
 3. **Domain core (no UI)** — implement and fully unit-test range parsing, lot planning, Z interpolation, statistics, status, dates. Validate against VFL golden spreadsheet.
 4. **Cross-cutting infrastructure** — env validation, logger, error types + RFC 7807 mapper, request context (request ID), auth + RBAC helper, audit service.

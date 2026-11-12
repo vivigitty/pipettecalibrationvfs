@@ -70,7 +70,7 @@ UI (React components)  →  Route handlers / Server Actions  →  Services  → 
 
 ### 2.3 API Design Rules (REST)
 - Resource-oriented, plural nouns, versioned: `/api/v1/customers`, `/api/v1/assets/{id}/sessions`.
-- Verbs: `GET` read, `POST` create / action (`POST /sessions/{id}/start`, `POST /sessions/{id}/certificates`), `PATCH` partial update, no `PUT`, `DELETE` only for non-business drafts.
+- Verbs: `GET` read, `POST` create / action (`POST /assets/{id}/sessions`, `POST /sessions/{id}/complete`), `PATCH` partial update, no `PUT`, `DELETE` only for non-business drafts.
 - JSON in `camelCase`. Dates ISO-8601 (`YYYY-MM-DD` for dates, UTC for timestamps). Decimals serialized as **strings**.
 - Pagination: `?page=&pageSize=` (max 100) with `{ data, meta: { page, pageSize, total } }`.
 - Idempotency: `POST` that creates a certificate accepts `Idempotency-Key`.
