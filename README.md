@@ -55,6 +55,8 @@ The login page links to `/forgot-password`. Users request an email, open its cro
 
 The PDF renderer is loaded only for certificate downloads, so PDFKit initialization failures cannot prevent lot-reading endpoints from loading. Internal API failures log the underlying error and request ID on the server; the UI includes that ID without exposing internal error details. If saving still fails after deployment, match the displayed request ID to the server log rather than relying on an unrelated certificate error.
 
+Prisma `P2028` means the interactive transaction is no longer available; it is not a PDF or input-validation error. Calibration startup batches lot creation, and lot saves batch audit writes and read previous readings together, keeping all audits in the same transaction without redundant snapshot queries. The transaction timeout remains 15 seconds. Interrupted transactions report `TRANSACTION_INTERRUPTED` (HTTP 503); refresh to check saved state before manually retrying. They are not automatically replayed because commit status may be uncertain. Server diagnostics include transaction duration and the Prisma error metadata: if failures continue, compare these with the timeout and check Supabase connection/pooler health and Vercel-to-database region latency. The error alone does not establish whether timeout, a connection interruption or another transaction-lifecycle issue caused it.
+
 ## Verification
 
 After installing dependencies and generating Prisma:

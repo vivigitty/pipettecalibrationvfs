@@ -1,9 +1,20 @@
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { querySchema, type Resource } from '@/schemas/resources';
 
-export const transaction = <T>(work: (tx: Prisma.TransactionClient) => Promise<T>) => db.$transaction(work, { isolationLevel: 'Serializable', timeout: 15000 });
+export async function transaction<T>(work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  try {
+    return await db.$transaction(work, { isolationLevel: 'Serializable', timeout: 15000 });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code==='P2028') {
+      logger.error({ err: error,code: 'TRANSACTION_INTERRUPTED',durationMs: Date.now()-startedAt,timeoutMs: 15000 },'Database transaction interrupted; not automatically retried');
+    }
+    throw error;
+  }
+}
 export const inventoryDb = db;
 
 export async function listInventory(resource: Resource, query: z.infer<typeof querySchema>) {

@@ -3,7 +3,7 @@ import { parseRange, planLots } from '@/domain/range';
 import { combineStatuses, compareLimit, statistics, toVolumeUl } from '@/domain/statistics';
 import { BusinessRuleError, ConflictError, NotFoundError } from '@/lib/errors';
 import { authorizeWrite, type Actor } from '@/lib/rbac';
-import { recordAudit } from '@/repositories/audit';
+import { recordAudit, recordAudits, type AuditEntry } from '@/repositories/audit';
 import { lockAsset, lockSession, sessionDetail } from '@/repositories/calibration';
 import { transaction } from '@/repositories/inventory';
 import { damageSchema, readingsSchema, startSessionSchema } from '@/schemas/resources';
@@ -23,18 +23,19 @@ export async function startSession(actor: Actor, assetId: string, raw: unknown, 
     if (!range.isActive || limits.length!==derived.timesToTest || derived.points.some((point) => !limits.some((limit) => limit.testPointPct===point.pct && point.volume.eq(limit.nominalVolumeUl.toString())))) throw new BusinessRuleError('LIMITS_REQUIRED','Capture all planned volume limits before calibration');
     const dates = calibrationDates(lab.processDate.toISOString().slice(0,10),input.nextCalibrationMonths);
     const session = await tx.calibrationSession.create({ data: { ...input,assetId,customerId: asset.customerId,rangeThresholdId: range.id,sessionNo: (previous?.sessionNo ?? 0)+1,processDate: lab.processDate,dueDate: new Date(dates.dueDate),reminderDate: new Date(dates.reminderDate),createdBy: actor.id } });
+    const audits: AuditEntry[] = [];
+    const plans = planLots(range.rangeLabel,range.channel,input.oneDispensingPerChannel);
     for (const limit of limits) {
       const volume = await tx.calibrationVolumeResult.create({ data: { calibrationSessionId: session.id,assetId,rangeThresholdLimitId: limit.id,nominalVolumeUl: limit.nominalVolumeUl,inaccuracyLimitPct: limit.inaccuracyLimitPct,imprecisionLimitPct: limit.imprecisionLimitPct } });
-      const plans = planLots(range.rangeLabel,range.channel,input.oneDispensingPerChannel).filter((lot) => limit.nominalVolumeUl.eq(lot.nominalVolumeUl));
-      for (const lot of plans) {
-        const row = await tx.calibrationLot.create({ data: { ...lot,calibrationVolumeResultId: volume.id,calibrationSessionId: session.id,assetId } });
-        await recordAudit(tx,actor,requestId,'calibration_lot',row.id,'create');
-      }
-      await recordAudit(tx,actor,requestId,'calibration_volume_result',volume.id,'create');
+      const lots = await tx.calibrationLot.createManyAndReturn({ data: plans.filter((lot) => limit.nominalVolumeUl.eq(lot.nominalVolumeUl))
+        .map((lot) => ({ ...lot,calibrationVolumeResultId: volume.id,calibrationSessionId: session.id,assetId })) });
+      audits.push(...lots.map((row): AuditEntry => ({ entityType: 'calibration_lot',entityId: row.id,action: 'create',after: row })));
+      audits.push({ entityType: 'calibration_volume_result',entityId: volume.id,action: 'create',after: volume });
     }
-    await tx.asset.update({ where: { id: assetId },data: { progress: 'in_progress' } });
-    await recordAudit(tx,actor,requestId,'asset',assetId,'start_calibration',asset);
-    await recordAudit(tx,actor,requestId,'calibration_session',session.id,'start'); return session;
+    const updatedAsset = await tx.asset.update({ where: { id: assetId },data: { progress: 'in_progress' } });
+    audits.push({ entityType: 'asset',entityId: assetId,action: 'start_calibration',before: asset,after: updatedAsset },
+      { entityType: 'calibration_session',entityId: session.id,action: 'start',after: session });
+    await recordAudits(tx,actor,requestId,audits); return session;
   });
 }
 
@@ -47,23 +48,26 @@ export async function saveLot(actor: Actor, sessionId: string, lotNo: number, ra
     const lot = await tx.calibrationLot.findUnique({ where: { calibrationSessionId_lotNo: { calibrationSessionId: sessionId,lotNo } } });
     if (!lot) throw new NotFoundError('Lot not found');
     const volumes = masses.map((mass) => toVolumeUl(mass,lab.zCorrectionValue.toString()));
+    const previousReadings = await tx.calibrationReading.findMany({ where: { calibrationLotId: lot.id } });
+    const audits: AuditEntry[] = [];
     for (const [index,massG] of masses.entries()) {
       const data = { calibrationLotId: lot.id,calibrationSessionId: sessionId,assetId: session.assetId,readingNo: index+1,massG,volumeUl: volumes[index] ?? '' };
-      const before = await tx.calibrationReading.findUnique({ where: { calibrationLotId_readingNo: { calibrationLotId: lot.id,readingNo: index+1 } } });
+      const before = previousReadings.find((reading) => reading.readingNo===index+1);
       const reading = await tx.calibrationReading.upsert({ where: { calibrationLotId_readingNo: { calibrationLotId: lot.id,readingNo: index+1 } },create: data,update: { massG,volumeUl: data.volumeUl } });
-      await recordAudit(tx,actor,requestId,'calibration_reading',reading.id,'save',before ?? undefined);
+      audits.push({ entityType: 'calibration_reading',entityId: reading.id,action: 'save',before,after: reading });
     }
-    await tx.calibrationLot.update({ where: { id: lot.id },data: statistics(volumes,lot.nominalVolumeUl.toString()) });
-    await recordAudit(tx,actor,requestId,'calibration_lot',lot.id,'save',lot);
+    const updatedLot = await tx.calibrationLot.update({ where: { id: lot.id },data: statistics(volumes,lot.nominalVolumeUl.toString()) });
+    audits.push({ entityType: 'calibration_lot',entityId: lot.id,action: 'save',before: lot,after: updatedLot });
     const pooledLots = await tx.calibrationLot.findMany({ where: { calibrationVolumeResultId: lot.calibrationVolumeResultId },take: 12 });
     const readings = await tx.calibrationReading.findMany({ where: { calibrationLotId: { in: pooledLots.map((row) => row.id) } },take: 120 });
     const volume = await tx.calibrationVolumeResult.findUniqueOrThrow({ where: { id: lot.calibrationVolumeResultId } });
     const stats = statistics(readings.map((reading) => reading.volumeUl.toString()),volume.nominalVolumeUl.toString());
     const isComplete = readings.length===pooledLots.length*10;
-    await tx.calibrationVolumeResult.update({ where: { id: volume.id },data: { ...stats,readingCount: readings.length,
+    const updatedVolume = await tx.calibrationVolumeResult.update({ where: { id: volume.id },data: { ...stats,readingCount: readings.length,
       inaccuracyResult: isComplete ? compareLimit(stats.inaccuracyActualPct,volume.inaccuracyLimitPct.toString()) : 'pending',
       imprecisionResult: isComplete ? compareLimit(stats.imprecisionActualPct,volume.imprecisionLimitPct.toString()) : 'pending' } });
-    await recordAudit(tx,actor,requestId,'calibration_volume_result',volume.id,'recalculate',volume);
+    audits.push({ entityType: 'calibration_volume_result',entityId: volume.id,action: 'recalculate',before: volume,after: updatedVolume });
+    await recordAudits(tx,actor,requestId,audits);
   });
   return sessionDetail(sessionId,actor.role==='executive');
 }

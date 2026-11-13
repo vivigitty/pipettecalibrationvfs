@@ -19,19 +19,19 @@ export async function createResource(actor: Actor, resource: Resource, raw: unkn
   switch (resource) {
     case 'customers': return transaction(async (tx) => {
       const customer = await tx.customer.create({ data: { ...customerSchema.parse(raw),createdBy: actor.id } });
-      await recordAudit(tx,actor,requestId,'customer',customer.id,'create'); return customer;
+      await recordAudit(tx,actor,requestId,'customer',customer.id,'create',undefined,customer); return customer;
     });
     case 'ranges': return createRange(actor,raw,requestId);
     case 'assets': return createAssets(actor,raw,requestId);
     case 'instruments': return transaction(async (tx) => {
       const input = instrumentSchema.parse(raw);
       const instrument = await tx.instrument.create({ data: { ...input,calibrationDueDate: new Date(input.calibrationDueDate) } });
-      await recordAudit(tx,actor,requestId,'instrument',instrument.id,'create'); return instrument;
+      await recordAudit(tx,actor,requestId,'instrument',instrument.id,'create',undefined,instrument); return instrument;
     });
     case 'lab-dimensions': return createLab(actor,raw,requestId);
     case 'users': return transaction(async (tx) => {
       const user = await tx.user.create({ data: userSchema.parse(raw) });
-      await recordAudit(tx,actor,requestId,'user',user.id,'create'); return user;
+      await recordAudit(tx,actor,requestId,'user',user.id,'create',undefined,user); return user;
     });
   }
 }
@@ -48,9 +48,9 @@ async function createRange(actor: Actor, raw: unknown, requestId: string) {
       const point = derived.points.find((candidate) => candidate.pct===limit.testPointPct);
       if (!point) throw new ValidationError('Unexpected test point');
       const row = await tx.rangeThresholdLimit.create({ data: { ...limit,rangeThresholdId: range.id,nominalVolumeUl: point.volume.toString(),capturedBy: actor.id } });
-      await recordAudit(tx,actor,requestId,'range_threshold_limit',row.id,'create');
+      await recordAudit(tx,actor,requestId,'range_threshold_limit',row.id,'create',undefined,row);
     }
-    await recordAudit(tx,actor,requestId,'range_threshold',range.id,'create'); return range;
+    await recordAudit(tx,actor,requestId,'range_threshold',range.id,'create',undefined,range); return range;
   });
 }
 
@@ -62,7 +62,7 @@ async function createAssets(actor: Actor, raw: unknown, requestId: string) {
       const [customer,range] = await Promise.all([tx.customer.findFirst({ where: { id: draft.customerId,isActive: true } }),tx.rangeThreshold.findFirst({ where: { id: draft.rangeThresholdId,isActive: true } })]);
       if (!customer || !range) throw new NotFoundError('Select an active customer and range');
       const asset = await tx.asset.create({ data: { ...draft,createdBy: actor.id } });
-      await recordAudit(tx,actor,requestId,'asset',asset.id,'create'); rows.push(asset);
+      await recordAudit(tx,actor,requestId,'asset',asset.id,'create',undefined,asset); rows.push(asset);
     }
     return rows;
   });
@@ -80,7 +80,7 @@ async function createLab(actor: Actor, raw: unknown, requestId: string) {
     const grid = await tx.zFactorReference.findMany({ where: { sourceVersion: getEnv().Z_SOURCE_VERSION } });
     const resolved = resolveZ(grid.map((row) => ({ temperatureC: row.temperatureC.toString(),pressureKpa: row.pressureKpa.toString(),zValue: row.zValue.toString(),sourceVersion: row.sourceVersion })),input.ddWaterTempC,input.airPressureHpa);
     const lab = await tx.labDimension.create({ data: { ...input,processDate: new Date(input.processDate),calibratedByUserId: actor.id,zCorrectionValue: resolved.zCorrectionValue,zSourceVersion: resolved.sourceVersion } });
-    await recordAudit(tx,actor,requestId,'lab_dimension',lab.id,'create'); return lab;
+    await recordAudit(tx,actor,requestId,'lab_dimension',lab.id,'create',undefined,lab); return lab;
   });
 }
 
