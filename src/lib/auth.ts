@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       // User is available during initial sign-in.
       // On subsequent requests, retain the existing token.
-      if (user?.id) {
+      if (user.id) {
         token.supabaseSubject = user.id;
       }
 
