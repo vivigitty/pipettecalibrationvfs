@@ -1,5 +1,6 @@
 
-import NextAuth from 'next-auth';
+import NextAuth, { type User } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
 import { verifyPassword } from './password-auth';
 import { requestAccess } from './access-request';
@@ -26,10 +27,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user }: { token: JWT; user?: User }) {
       // User is available during initial sign-in.
       // On subsequent requests, retain the existing token.
-      if (user.id) {
+      if (user?.id) {
         token.supabaseSubject = user.id;
       }
 
