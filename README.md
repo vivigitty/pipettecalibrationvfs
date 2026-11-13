@@ -45,6 +45,12 @@ The latest `Database_Design.md` v1.2 and `Spec.md` control conflicts in older ta
 
 If Vercel logs `JWTSessionError` with `Cannot read properties of undefined (reading 'id')` in the JWT callback, deploy the version that guards `user?.id` in `src/lib/auth.ts`. Auth.js supplies `user` during sign-in, but subsequent session reads must retain the existing token without accessing an absent user. After redeploying, sign in again if the failed session was cleared.
 
+New-account access follows this order: create account, confirm the Supabase email link, then sign in once to submit an inactive request for administrator review in User access. That first sign-in is expected to show the approval-required message, not grant access. After an administrator assigns the role and approves access, the user signs in again with the same email and password. No second confirmation email or administrator/approval notification email is sent; users should contact their administrator for status. Inactive suspended accounts also require administrator review and are never automatically reactivated by signing in.
+
+### Forgot password
+
+The login page links to `/forgot-password`. Users request an email, open its cross-device link, press Continue, and set a new password. Recovery does not sign users into the app or change approval/roles. It is disabled in read-only preview. Before using it, configure the **Reset password** email template and allowed callback URL as described in [database setup](database/README.md#password-recovery-setup). This configuration is required; the default Supabase recovery template is not compatible with this server-verified token-hash flow.
+
 ### Reading-save troubleshooting
 
 The PDF renderer is loaded only for certificate downloads, so PDFKit initialization failures cannot prevent lot-reading endpoints from loading. Internal API failures log the underlying error and request ID on the server; the UI includes that ID without exposing internal error details. If saving still fails after deployment, match the displayed request ID to the server log rather than relying on an unrelated certificate error.

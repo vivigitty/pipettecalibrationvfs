@@ -1,4 +1,9 @@
+import { CredentialsSignin } from 'next-auth';
 import { db } from './db';
+
+export class ApprovalRequiredError extends CredentialsSignin {
+  override code = 'approval_required';
+}
 
 export async function requestAccess(identity: { id: string; email: string }) {
   const user = await db.user.upsert({
@@ -12,6 +17,7 @@ export async function requestAccess(identity: { id: string; email: string }) {
     },
     update: {},
   });
-  if (!user.isActive || user.email.toLowerCase() !== identity.email.toLowerCase()) return null;
+  if (user.email.toLowerCase() !== identity.email.toLowerCase()) return null;
+  if (!user.isActive) throw new ApprovalRequiredError();
   return { id: identity.id, email: identity.email, name: user.displayName };
 }

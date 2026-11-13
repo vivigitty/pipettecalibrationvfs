@@ -29,6 +29,35 @@ test('FR-01 form is labeled and cannot save preview data', async ({ page }) => {
   await expect(page.getByRole('button',{ name: 'Save record' })).toBeDisabled();
 });
 
+test('Signup explains the approval sequence and verified users see approval guidance', async ({ page }) => {
+  await page.goto('/signup');
+  await expect(page.getByRole('listitem').filter({ hasText: 'sign in once to submit your access request' })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'After approval, sign in again' })).toBeVisible();
+  await expect(page.getByText('No approval notification emails are currently sent;',{ exact: false })).toBeVisible();
+  await page.goto('/login?error=approval');
+  await expect(page.getByRole('status')).toContainText('Your email is verified');
+  await expect(page.getByRole('status')).toContainText('administrator review in User access');
+  await expect(page.getByRole('status')).toContainText('no second confirmation email is needed');
+});
+
+test('Password recovery is linked from login and requires a verified reset session', async ({ page,request }) => {
+  await page.goto('/login');
+  await page.getByRole('link',{ name: 'Forgot password?',exact: true }).click();
+  await expect(page.getByRole('heading',{ name: 'Forgot password',exact: true })).toBeVisible();
+  await expect(page.getByLabel('Email',{ exact: true })).toBeVisible();
+  await page.goto('/reset-password');
+  await expect(page).toHaveURL(/forgot-password\?error=invalid$/);
+  await expect(page.getByRole('alert')).toContainText('invalid, expired or already used');
+  const response = await request.get(`/reset-password/confirm?token_hash=${'a'.repeat(64)}`);
+  expect(response.headers()['referrer-policy']).toBe('no-referrer');
+  expect(response.headers()['cache-control']).toContain('no-store');
+  await page.goto(`/reset-password/confirm?token_hash=${'a'.repeat(64)}`);
+  await expect(page.getByRole('button',{ name: 'Continue to reset password' })).toBeVisible();
+  expect((await page.context().cookies()).some((cookie) => cookie.name==='vfl-password-recovery')).toBe(false);
+  await page.goto('/login?reset=1');
+  await expect(page.getByRole('status')).toContainText('Your password has been updated');
+});
+
 test('Calibration setup stays in the pipette flow with mandatory, type-filtered instruments', async ({ page }) => {
   await page.goto('/assets/00000000-0000-4000-8000-000000000100');
   const navigation = page.getByRole('navigation',{ name: 'Main navigation' });

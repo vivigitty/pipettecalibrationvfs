@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 const credentialsSchema = z.object({ email: z.email(), password: z.string().min(1).max(1024) });
-const signupSchema = z.object({ email: z.email(), password: z.string().min(12).max(128) });
+export const newPasswordSchema = z.string().min(12).max(128);
+const signupSchema = z.object({ email: z.email(), password: newPasswordSchema });
 const identitySchema = z.object({ user: z.object({ id: z.uuid(), email: z.email(), email_confirmed_at: z.string().min(1) }) });
 
 export async function registerAccount(credentials: unknown) {

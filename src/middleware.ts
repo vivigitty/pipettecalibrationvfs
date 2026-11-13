@@ -11,7 +11,9 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next({ request: { headers } });
   response.headers.set('Content-Security-Policy',csp);
   response.headers.set('X-Content-Type-Options','nosniff');
-  response.headers.set('Referrer-Policy','strict-origin-when-cross-origin');
+  const isRecovery = request.nextUrl.pathname==='/forgot-password' || request.nextUrl.pathname.startsWith('/reset-password');
+  response.headers.set('Referrer-Policy',isRecovery ? 'no-referrer' : 'strict-origin-when-cross-origin');
+  if (isRecovery) response.headers.set('Cache-Control','no-store');
   response.headers.set('Permissions-Policy','geolocation=(), camera=(), microphone=()');
   if (!isDev) response.headers.set('Strict-Transport-Security','max-age=31536000; includeSubDomains');
   return response;

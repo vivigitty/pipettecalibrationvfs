@@ -6,7 +6,14 @@ import { getEnv } from '@/lib/env';
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ error?: string; sent?: string }> }) {
   const { error, sent } = await searchParams;
   return <main className="login-page"><div className="login-content"><div className="eyebrow">VFL SCIENCES</div><h1>Create account</h1>
-    {sent ? <p role="status">If registration is available for this address, a confirmation email has been sent. After confirming, sign in to submit your access request for administrator approval.</p> : null}
+    {sent ? <p role="status">If registration is available for this address, a confirmation email has been sent. Follow the steps below; confirming your email does not grant application access automatically.</p> : null}
+    <ol>
+      <li>Create your account, then verify your email by clicking the confirmation link.</li>
+      <li>After confirming, sign in once to submit your access request. You will not have application access yet.</li>
+      <li>Ask an administrator to review your request in User access and approve the appropriate role.</li>
+      <li>After approval, sign in again with the same email and password. No second email confirmation is required.</li>
+    </ol>
+    <p>Approval is handled in the app. No approval notification emails are currently sent; contact your administrator for an update.</p>
     <form action={async (formData: FormData) => {
       'use server';
       let accepted = false;

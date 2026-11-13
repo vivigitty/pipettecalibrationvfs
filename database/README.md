@@ -42,9 +42,37 @@ SEED_ADMIN_SUBJECT=UUID-COPIED-FROM-SUPABASE-AUTH
 
 New requests default to inactive with the executive role (read-only if eventually approved). No self-service input can set a role or approval flag. Inactive is shared by pending, declined, and suspended accounts; this MVP does not maintain separate review-state labels or send approval emails. Inform approved users through your normal communication channel. A user who signs up but never confirms and attempts sign-in appears only in Supabase Authentication, not the app's review list. Existing accounts are never automatically relinked by email.
 
-Passwords are verified by Supabase over its Auth API; Auth.js issues the app's HTTP-only session cookie. Passwords and Supabase access/refresh tokens are not stored in app sessions or business tables. App sessions last up to eight hours. Disable the user in the app's User access screen for immediate blocking on subsequent requests; a password reset or Supabase-only account deletion does not immediately revoke an existing app session. Self-service signup is implemented; self-service password recovery is not. Password administration is handled through your Supabase administrator workflow. Configure and test a recovery callback before using Supabase recovery links with this app.
+The signup page explains all four steps: register, confirm email, attempt sign-in to submit the request, and sign in again after administrator approval. Verified inactive users see an approval-required message rather than a generic credentials failure. Approval does not send another confirmation link: the user's email is already verified, and their existing password remains valid. Administrators review requests in User access only; no administrator-notification emails are sent.
+
+Passwords are verified by Supabase over its Auth API; Auth.js issues the app's HTTP-only session cookie. Passwords and Supabase access/refresh tokens are not stored in app sessions or business tables. App sessions last up to eight hours. Disable the user in the app's User access screen for immediate blocking on subsequent requests; a password reset or Supabase-only account deletion does not immediately revoke an existing Auth.js app session. Self-service signup and password recovery are implemented. Recovery uses a separate temporary HttpOnly cookie, not an Auth.js app session; see the required setup below.
 
 For this server-only database integration, disable Supabase's Data API if unused (Supabase Auth remains required). The business tables have no browser-facing RLS policy model; do not expose them through the Data API without a separate security review. Before production, add application-level shared-store signup/login throttling and abuse protection in addition to Supabase's Auth rate limits, and test email delivery, account recovery, and access revocation. Automated and browser testing of this signup flow remains required before public deployment.
+
+## Password recovery setup
+
+No new API keys, service-role credentials or database migration are needed. Recovery uses the existing Supabase publishable key and Supabase's email-delivery/rate-limit configuration.
+
+1. In Vercel, set `AUTH_URL` to the actual HTTPS app origin, such as `https://YOUR-APP.vercel.app`, and deploy the new reset pages before testing emailed links.
+2. Development and production share the same Supabase project. In Supabase **Authentication > URL Configuration**, keep **Site URL** set to the live app origin. Add the exact **Redirect URL** `https://YOUR-APP.vercel.app/reset-password/confirm` and retain the existing signup `/login` URL. Recovery emails from either environment open the live app; do not add a local recovery redirect. Keep the local app's `AUTH_URL` set to its own local origin because it is also used for request-origin checks.
+3. In **Authentication > Email Templates > Reset password**, replace the recovery link with:
+
+   ```html
+   <h2>Reset your password</h2>
+   <p>If you requested a password reset, use this link to continue:</p>
+   <p><a href="{{ .SiteURL }}/reset-password/confirm?token_hash={{ .TokenHash }}">Reset password</a></p>
+   <p>If you did not request this, you can ignore this email.</p>
+   ```
+
+   Change only the **Reset password** template, not **Confirm signup**. This flow deliberately uses the shared `{{ .SiteURL }}`, not an environment-specific `{{ .RedirectTo }}` or `{{ .ConfirmationURL }}`. The default confirmation URL would consume the recovery token before the app can verify it. The app does not supply a local redirect URL when requesting recovery emails.
+4. Verify Supabase custom SMTP, email rate limits, recovery-link expiry and any email-provider link tracking. Test the latest email on another browser/device. Supabase recovery links are single-use; old, expired or already-used links require a fresh request.
+
+Because both environments use the same Supabase Auth project, resetting an account's password changes its credentials for both environments. Use a dedicated test account; opening a reset page locally does not make an emailed link local or isolate the account change from production.
+
+The email request uses a generic acknowledgement, without looking up app approval or exposing whether an account exists. Merely opening the callback page does not consume the link; the user presses Continue to verify it server-side as a recovery token. GET-only email scanners therefore do not consume it through this app. An expired or invalid link displays a new-link prompt. Provider/delivery failures are reported explicitly and logged without passwords, emails or token payloads.
+
+After verification, only the recovery access token is stored in a path-scoped, SameSite=Strict, HttpOnly cookie, Secure in production, for at most 15 minutes (or the shorter Supabase token lifetime). It is never exposed in form fields or local storage; refresh tokens are discarded. Recovery pages use `no-store` and `no-referrer`. The app updates only the authenticated Supabase user's password and clears the recovery cookie after success or expired authorization, then sends the user to login. Pending, suspended and approved app users retain their existing roles and approval status; recovery never creates or activates an app user.
+
+This flow does not revoke Auth.js sessions already open on other devices; those remain subject to the existing eight-hour lifetime and database activation checks. If an account may be compromised, suspend it in User access while the administrator investigates.
 
 ## Standalone SQL path
 
