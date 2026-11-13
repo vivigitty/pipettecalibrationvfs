@@ -1,6 +1,6 @@
-import type { Resource } from '@/schemas/resources';
+import type { InstrumentType,Resource } from '@/schemas/resources';
 
-export type Field = { name: string; label: string; type?: 'date' | 'email' | 'decimal' | 'select'; options?: string[]; isOptional?: boolean; resource?: Resource; instrumentType?: string };
+export type Field = { name: string; label: string; type?: 'date' | 'email' | 'decimal' | 'select'; options?: string[]; isOptional?: boolean; resource?: Resource; instrumentType?: InstrumentType };
 export const fields: Record<Exclude<Resource,'assets'>,Field[]> = {
   customers: [{ name: 'customerName',label: 'Customer name' },{ name: 'department',label: 'Department' },{ name: 'address1',label: 'Address 1' },{ name: 'address2',label: 'Address 2',isOptional: true },{ name: 'email',label: 'Email',type: 'email' },{ name: 'phone1',label: 'Phone 1' },{ name: 'phone2',label: 'Phone 2',isOptional: true },{ name: 'contactName',label: 'Contact name' }],
   ranges: [{ name: 'rangeLabel',label: 'Volume range (uL)' },{ name: 'channel',label: 'Channel',type: 'select',options: ['single','eight','twelve'] },{ name: 'make',label: 'Manufacturer' },{ name: 'model',label: 'Model' }],

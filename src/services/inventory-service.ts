@@ -95,3 +95,15 @@ export async function getAsset(actor: Actor, id: string) {
   const [sessions,damages] = await Promise.all([inventoryDb.calibrationSession.findMany({ where: { assetId: id },select: { id: true,sessionNo: true,status: true,finalStatus: true,dueDate: true },orderBy: { sessionNo: 'desc' },take: 60 }),inventoryDb.assetDamage.findMany({ where: { assetId: id },take: 100 })]);
   return { asset,sessions,damages: damages.map(({ partCost,...row }) => actor.role==='executive' ? { ...row,partCost } : row) };
 }
+
+export async function getLabConditions(actor: Actor, id: string) {
+  if (actor.isPreview) {
+    const lab = previewList('lab-dimensions',querySchema.parse({})).data.find((row) => row.id===id);
+    if (!lab) throw new NotFoundError('Lab conditions not found');
+    const instruments = previewList('instruments',querySchema.parse({})).data;
+    return { ...lab,balance: instruments.find((row) => row.id===lab.balanceInstrumentId),air: instruments.find((row) => row.id===lab.airInstrumentId),water: instruments.find((row) => row.id===lab.waterThermometerInstrumentId) };
+  }
+  const lab = await inventoryDb.labDimension.findUnique({ where: { id },include: { balance: true,air: true,water: true } });
+  if (!lab) throw new NotFoundError('Lab conditions not found');
+  return lab;
+}

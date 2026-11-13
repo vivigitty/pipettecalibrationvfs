@@ -23,7 +23,9 @@ export async function listInventory(resource: Resource, query: z.infer<typeof qu
     }
     case 'assets': return listAssets(query);
     case 'instruments': {
-      const where = { isActive: true, OR: [{ makeModel: contains },{ serialNumber: contains }] };
+      const where = { isActive: true, OR: [{ makeModel: contains },{ serialNumber: contains }],
+        ...(query.instrumentType ? { instrumentType: query.instrumentType } : {}),
+        ...(query.validOn ? { calibrationDueDate: { gte: new Date(query.validOn) } } : {}) };
       const [data,total] = await db.$transaction([db.instrument.findMany({ where,...paging,orderBy: { calibrationDueDate: 'desc' } }),db.instrument.count({ where })]);
       return { data,meta: { ...query,total } };
     }

@@ -14,6 +14,7 @@ export const rangeSchema = z.strictObject({ rangeLabel: text(30), channel: z.enu
 export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: text() });
 export const assetBatchSchema = z.strictObject({ assets: z.array(assetSchema).min(1).max(50) });
 export const instrumentSchema = z.strictObject({ instrumentType: z.enum(['balance','air_thermometer','water_thermometer']), makeModel: text(150), serialNumber: text(), calibrationDueDate: dateSchema });
+export type InstrumentType = z.infer<typeof instrumentSchema>['instrumentType'];
 export const labSchema = z.strictObject({ processDate: dateSchema, serviceMode: z.enum(['onsite','offsite']), balanceInstrumentId: idSchema, airInstrumentId: idSchema, waterThermometerInstrumentId: idSchema, ddWaterTempC: boundedDecimal('15','30'), roomTempC: boundedDecimal('15','30'), humidityPct: boundedDecimal('0','100'), airPressureHpa: boundedDecimal('800','1050') });
 export const damageSchema = z.strictObject({ observationNotes: text(3000), damagedPartName: text(150), partReplaced: z.boolean(), replacedPartSerialNumber: optionalText(), partCost: z.string().regex(/^\d+(\.\d{1,2})?$/).nullish() }).superRefine((data, ctx) => {
   if (data.partReplaced && (!data.replacedPartSerialNumber || !data.partCost)) ctx.addIssue({ code: 'custom', path: ['replacedPartSerialNumber'], message: 'Replacement serial and cost are required' });
@@ -23,7 +24,7 @@ export const readingsSchema = z.strictObject({ masses: z.array(decimalSchema).le
 export const userSchema = z.strictObject({ email: z.email(), displayName: text(120), externalSubject: text(255), role: z.enum(['technician','admin','executive']), isActive: z.boolean().default(true) });
 export const userUpdateSchema = z.strictObject({ role: userSchema.shape.role.optional(),isActive: z.boolean().optional(),displayName: userSchema.shape.displayName.optional() }).refine((value) => Object.keys(value).length>0,'Provide at least one change');
 export const voidSchema = z.strictObject({ reason: text(2000) });
-export const querySchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25), search: z.string().max(200).default(''), progress: z.enum(['not_started','in_progress','completed']).optional(), customerId: idSchema.optional(), dueDate: dateSchema.optional() });
+export const querySchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25), search: z.string().max(200).default(''), progress: z.enum(['not_started','in_progress','completed']).optional(), customerId: idSchema.optional(), dueDate: dateSchema.optional(), instrumentType: instrumentSchema.shape.instrumentType.optional(), validOn: dateSchema.optional() });
 export const rowSchema = z.record(z.string(), z.unknown());
 export const listSchema = z.object({ data: z.array(rowSchema), meta: z.object({ page: z.number(), pageSize: z.number(), total: z.number() }) });
 export type Row = z.infer<typeof rowSchema>;

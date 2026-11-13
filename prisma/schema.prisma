@@ -136,7 +136,7 @@ model Instrument {
   isActive Boolean @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
-  @@unique([serialNumber,calibrationDueDate], map: "uq_instrument_version")
+  @@unique([serialNumber,instrumentType,calibrationDueDate], map: "uq_instrument_version")
   @@map("instruments")
 }
 model Asset {

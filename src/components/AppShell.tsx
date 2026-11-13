@@ -1,12 +1,10 @@
 import Link from 'next/link';
-import { ClipboardList,FlaskConical,Users,SlidersHorizontal,Thermometer,ShieldCheck,ArrowUpRight } from 'lucide-react';
+import { ClipboardList,ShieldCheck,ArrowUpRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Actor } from '@/lib/rbac';
 
 const navigation = [
-  { href: '/assets',label: 'Pipette inventory',icon: ClipboardList },{ href: '/customers',label: 'Customers',icon: Users },
-  { href: '/ranges',label: 'Ranges & limits',icon: SlidersHorizontal },{ href: '/instruments',label: 'Lab instruments',icon: Thermometer },
-  { href: '/lab-dimensions',label: 'Lab conditions',icon: FlaskConical },
+  { href: '/assets',label: 'Pipette inventory',icon: ClipboardList },
 ];
 
 export function AppShell({ actor,active,children }: { actor: Actor; active: string; children: ReactNode }) {

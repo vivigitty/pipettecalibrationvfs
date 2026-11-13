@@ -28,3 +28,33 @@ test('FR-01 form is labeled and cannot save preview data', async ({ page }) => {
   await expect(page.getByLabel('Customer name',{ exact: true })).toBeVisible();
   await expect(page.getByRole('button',{ name: 'Save record' })).toBeDisabled();
 });
+
+test('Calibration setup stays in the pipette flow with mandatory, type-filtered instruments', async ({ page }) => {
+  await page.goto('/assets/00000000-0000-4000-8000-000000000100');
+  const navigation = page.getByRole('navigation',{ name: 'Main navigation' });
+  await expect(navigation.getByRole('link',{ name: 'Pipette inventory' })).toBeVisible();
+  await expect(navigation.getByRole('link',{ name: /Customers|Ranges & limits|Lab instruments|Lab conditions/ })).toHaveCount(0);
+
+  await page.getByRole('combobox',{ name: 'Lab conditions / sitting' }).selectOption('00000000-0000-4000-8000-000000000040');
+  const summary = page.getByRole('region',{ name: 'Selected lab conditions' });
+  await expect(summary).toContainText('Testo 108 / LAB-3');
+  await expect(summary).toContainText('Sartorius BCE224 / LAB-1');
+  await page.getByLabel('Next calibration due (months)').fill('6');
+
+  const add = page.getByRole('button',{ name: 'Add lab conditions',exact: true });
+  await expect(add).toHaveClass(/primary/);
+  await add.click();
+  await expect(page.getByRole('heading',{ name: 'New lab conditions',exact: true })).toBeVisible();
+  for (const label of ['Balance','Air thermometer','Water thermometer']) {
+    await expect(page.getByRole('combobox',{ name: label,exact: true })).toHaveAttribute('required','');
+  }
+  await expect(page.getByRole('combobox',{ name: 'Water thermometer',exact: true }).getByRole('option',{ name: /Testo 108/ })).toHaveCount(1);
+  await expect(page.getByRole('combobox',{ name: 'Water thermometer',exact: true }).getByRole('option',{ name: /Sartorius|Testo 622/ })).toHaveCount(0);
+  await page.getByRole('button',{ name: 'Add water thermometer',exact: true }).click();
+  await expect(page.getByRole('combobox',{ name: 'Instrument type',exact: true })).toHaveValue('water_thermometer');
+  await expect(page.getByRole('combobox',{ name: 'Instrument type',exact: true }).getByRole('option')).toHaveCount(1);
+  await page.getByRole('button',{ name: 'Close form',exact: true }).last().click();
+  await page.getByRole('button',{ name: 'Close form',exact: true }).click();
+  await expect(page.getByLabel('Next calibration due (months)')).toHaveValue('6');
+  await expect(page.getByRole('combobox',{ name: 'Lab conditions / sitting' })).toHaveValue('00000000-0000-4000-8000-000000000040');
+});

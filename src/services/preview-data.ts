@@ -13,10 +13,11 @@ const ranges = [
 ];
 const assets = Array.from({ length: 8 },(_,index) => ({ id: id(100+index),customerId: id(index%2 ? 11 : 10),customerName: customers[index%2]?.customerName ?? '',rangeThresholdId: id(20+index%3),rangeLabel: ranges[index%3]?.rangeLabel ?? '',make: ranges[index%3]?.make ?? '',serialNumber: `LK${20869+index}`,inventoryNumber: `202609${844+index}`,invoiceNumber: 'VFL/26-27/0184',progress: 'not_started',customerAssetId: null }));
 const instruments = ['balance','air_thermometer','water_thermometer'].map((type,index) => ({ id: id(30+index),instrumentType: type,makeModel: ['Sartorius BCE224','Testo 622','Testo 108'][index],serialNumber: `LAB-${index+1}`,calibrationDueDate: '2027-12-31T00:00:00.000Z' }));
-const labs = [{ id: id(40),processDate: '2026-11-07T00:00:00.000Z',serviceMode: 'onsite',ddWaterTempC: '29.4',roomTempC: '29.4',humidityPct: '74',airPressureHpa: '1008.8',zCorrectionValue: '1.0052',zSourceVersion: 'ISO8655-6:2022-TableA1-transcribed-UNVERIFIED' }];
+const labs = [{ id: id(40),processDate: '2026-11-07T00:00:00.000Z',serviceMode: 'onsite',balanceInstrumentId: id(30),airInstrumentId: id(31),waterThermometerInstrumentId: id(32),ddWaterTempC: '29.4',roomTempC: '29.4',humidityPct: '74',airPressureHpa: '1008.8',zCorrectionValue: '1.0052',zSourceVersion: 'ISO8655-6:2022-TableA1-transcribed-UNVERIFIED' }];
 
 export function previewList(resource: Resource, query: z.infer<typeof querySchema>) {
   const rows: Row[] = { customers,ranges,assets,instruments,'lab-dimensions': labs,users: [] }[resource];
-  const matched = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query.search.toLowerCase()) && (!query.progress || row.progress===query.progress) && (!query.customerId || row.customerId===query.customerId) && !(resource==='assets' && query.dueDate));
+  const matched = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query.search.toLowerCase()) && (!query.progress || row.progress===query.progress) && (!query.customerId || row.customerId===query.customerId) && !(resource==='assets' && query.dueDate)
+    && (resource!=='instruments' || ((!query.instrumentType || row.instrumentType===query.instrumentType) && (!query.validOn || (typeof row.calibrationDueDate==='string' && row.calibrationDueDate.slice(0,10)>=query.validOn)))));
   return { data: matched.slice((query.page-1)*query.pageSize,query.page*query.pageSize),meta: { page: query.page,pageSize: query.pageSize,total: matched.length } };
 }

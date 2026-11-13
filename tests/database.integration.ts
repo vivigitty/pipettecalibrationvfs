@@ -23,7 +23,7 @@ beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16.11-alpine').start();
   client = new Client({ connectionString: container.getConnectionUri() });
   await client.connect();
-  for (const file of ['001-create-tables','002-integrity','003-views','005-app-grants','006-snapshot-guards']) await client.query(await readFile(`database/${file}.sql`,'utf8'));
+  for (const file of ['001-create-tables','002-integrity','003-views','005-app-grants','006-snapshot-guards','007-instrument-type-identity']) await client.query(await readFile(`database/${file}.sql`,'utf8'));
   await fixtures();
 });
 afterAll(async () => { await client?.end(); await container?.stop(); });
@@ -53,6 +53,21 @@ describe('FR-01 FR-05 database inventory constraints', () => {
   });
   it('rejects duplicate inventory numbers', async () => {
     await expect(connection().query("INSERT INTO assets(customer_id,range_threshold_id,serial_number,inventory_number,invoice_number,created_by) VALUES($1,$2,'OTHER','TEST-1','INV-2',$3)",[customer,range,user])).rejects.toMatchObject({ code: '23505' });
+  });
+});
+
+describe('Instrument identity and reuse', () => {
+  it('allows air and water thermometers with the same serial and due date', async () => {
+    await expect(connection().query("INSERT INTO instruments(instrument_type,make_model,serial_number,calibration_due_date) VALUES('water_thermometer','Dual thermometer','A-1','2027-01-01')")).resolves.toBeDefined();
+  });
+  it('rejects duplicate versions of the same instrument type and serial', async () => {
+    await expect(connection().query("INSERT INTO instruments(instrument_type,make_model,serial_number,calibration_due_date) VALUES('air_thermometer','Air','A-1','2027-01-01')")).rejects.toMatchObject({ code: '23505' });
+  });
+  it('preserves new calibration versions without changing old instrument references', async () => {
+    await expect(connection().query("INSERT INTO instruments(instrument_type,make_model,serial_number,calibration_due_date) VALUES('air_thermometer','Air','A-1','2028-01-01')")).resolves.toBeDefined();
+  });
+  it('reuses all three instruments in another sitting on another date', async () => {
+    await expect(connection().query("INSERT INTO lab_dimensions(process_date,calibrated_by_user_id,balance_instrument_id,air_instrument_id,water_thermometer_instrument_id,dd_water_temp_c,room_temp_c,humidity_pct,air_pressure_hpa,z_correction_value,z_source_version) SELECT '2026-10-02',calibrated_by_user_id,balance_instrument_id,air_instrument_id,water_thermometer_instrument_id,dd_water_temp_c,room_temp_c,humidity_pct,air_pressure_hpa,z_correction_value,z_source_version FROM lab_dimensions WHERE id=$1",[lab])).resolves.toBeDefined();
   });
 });
 

@@ -3,8 +3,7 @@ import { NotFoundError } from '@/lib/errors';
 import type { Actor } from '@/lib/rbac';
 import { idSchema,resourceSchema } from '@/schemas/resources';
 import { completeSession,createDamage,getSession,saveLot,startSession } from './calibration-service';
-import { downloadSessionCertificate } from './certificate-service';
-import { createResource,getAsset,listResources } from './inventory-service';
+import { createResource,getAsset,getLabConditions,listResources } from './inventory-service';
 import { derivePreview } from './preview-service';
 import { updateLimits,updateUser } from './maintenance-service';
 
@@ -13,8 +12,13 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
   if (parts.length===1 && resource && ['range-plan','dates','z-factor'].includes(resource)) return derivePreview(actor,resource,query);
   if (parts.length===1) return listResources(actor,resourceSchema.parse(resource),query);
   if (resource==='assets' && id && parts.length===2) return getAsset(actor,idSchema.parse(id));
+  if (resource==='lab-dimensions' && id && parts.length===2) return getLabConditions(actor,idSchema.parse(id));
   if (resource==='sessions' && id && parts.length===2) return getSession(actor,idSchema.parse(id));
-  if (resource==='sessions' && id && action==='certificate-download' && parts.length===3) return downloadSessionCertificate(actor,idSchema.parse(id));
+  if (resource==='sessions' && id && action==='certificate-download' && parts.length===3) {
+    const sessionId = idSchema.parse(id);
+    const { downloadSessionCertificate } = await import('./certificate-service');
+    return downloadSessionCertificate(actor,sessionId);
+  }
   throw new NotFoundError('Endpoint not found');
 }
 

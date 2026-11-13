@@ -57,9 +57,12 @@ psql "$env:DIRECT_URL" -v ON_ERROR_STOP=1 -f database/003-views.sql
 psql "$env:DIRECT_URL" -v ON_ERROR_STOP=1 -f database/004-seed-z-factors.sql
 psql "$env:DIRECT_URL" -v ON_ERROR_STOP=1 -f database/005-app-grants.sql
 psql "$env:DIRECT_URL" -v ON_ERROR_STOP=1 -f database/006-snapshot-guards.sql
+psql "$env:DIRECT_URL" -v ON_ERROR_STOP=1 -f database/007-instrument-type-identity.sql
 ```
 
 Tables/enums/migrations are intentionally not repeatable; seeds and grants are repeatable. If starting with these standalone scripts and later switching to Prisma deployment, baseline the matching migrations with `prisma migrate resolve --applied <migration-name>` first. Grants are applied separately for either path.
+
+For an existing standalone-managed database, apply `007-instrument-type-identity.sql` once as the database owner. For a Prisma-managed database, use `npm run db:deploy` instead. Instrument versions are unique by `(serial_number, instrument_type, calibration_due_date)`, allowing an air and water thermometer to share a serial number and due date. UUID references and the immutable snapshots of used instruments are unchanged; each version may be reused across multiple lab sittings and pipette calibrations.
 
 There are **15 business tables**, including `calibration_volume_results`, as required by database design v1.2. Prisma adds its own migration history table. Measurements and statistics use unscaled NUMERIC to avoid implicit storage rounding. Z alone is stored at four decimal places. Certificate idempotency adds `idempotency_key`.
 

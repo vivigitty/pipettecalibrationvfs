@@ -10,7 +10,7 @@ export async function api(path: string, method = 'GET', data?: unknown): Promise
   const result: unknown = await response.json();
   if (!response.ok) {
     const problem = problemSchema.safeParse(result);
-    throw new ApiError(problem.success ? problem.data.detail : 'Request failed',problem.success ? problem.data.errors ?? [] : []);
+    throw new ApiError(problem.success ? `${problem.data.detail}${problem.data.requestId ? ` (Request ID: ${problem.data.requestId})` : ''}` : 'Request failed',problem.success ? problem.data.errors ?? [] : []);
   }
   return result;
 }
