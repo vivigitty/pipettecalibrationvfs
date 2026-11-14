@@ -57,6 +57,8 @@ const styles = StyleSheet.create({
 
   customerBlock: {
     flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
     paddingRight: 10,
     fontSize: 7.5,
     lineHeight: 1.1,
@@ -67,8 +69,10 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: 105,
-    height: 43,
+    width: 64,
+    height: 64,
+    flexShrink: 0,
+    backgroundColor: '#ffffff',
     objectFit: 'contain',
   },
 
@@ -641,7 +645,7 @@ export function CertificateDocument({
             </Text>
 
             <Text style={styles.detailExtra}>
-              No. of Channel: {nil(data.channel)}
+              Number of Channels: {nil(data.channel)}
             </Text>
           </View>
 
@@ -661,57 +665,24 @@ export function CertificateDocument({
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>
-              S.No.
+              In Use at
             </Text>
 
             <Text style={styles.detailValue}>
-              {nil(data.serialNumber)}
+              {nil(data.department)}
             </Text>
 
             <Text style={styles.detailExtra}>
-              Cust ID No.: {nil(data.customerAssetId)}
+              Serial Number: {nil(data.serialNumber)}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>
-              Invoice No.
-            </Text>
-
-            <Text style={styles.detailValue}>
-              {nil(data.invoiceNumber)}
-            </Text>
+            <Text style={styles.detailLabel}>{''}</Text>
+            <Text style={styles.detailValue}>{''}</Text>
 
             <Text style={styles.detailExtra}>
-              Contact: {nil(data.contactName)}
-            </Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>
-              Email
-            </Text>
-
-            <Text style={styles.detailValue}>
-              {nil(data.email)}
-            </Text>
-
-            <Text style={styles.detailExtra}>
-              Service Mode: {nil(data.serviceMode)}
-            </Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>
-              Phone 1
-            </Text>
-
-            <Text style={styles.detailValue}>
-              {nil(data.phone1)}
-            </Text>
-
-            <Text style={styles.detailExtra}>
-              Phone 2: {nil(data.phone2)}
+              Customer ID: {nil(data.customerAssetId)}
             </Text>
           </View>
         </View>

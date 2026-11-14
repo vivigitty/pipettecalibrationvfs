@@ -5,7 +5,7 @@ const config: NextConfig = {
   serverExternalPackages: ['@prisma/client','@react-pdf/renderer','pino'],
   outputFileTracingIncludes: {
     // PDFKit loads standard fonts dynamically; include their shared chunks too.
-    '/api/v1/*': ['./node_modules/pdfkit/js/standard-fonts/**/*'],
+    '/api/v1/*': ['./node_modules/pdfkit/js/standard-fonts/**/*','./public/VFL_Logo.png'],
   },
 };
 export default config;

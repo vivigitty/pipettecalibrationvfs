@@ -89,6 +89,7 @@ describe('Approved certificate layout', () => {
     });
     const bytes = await renderToBuffer(CertificateDocument({ data: input }));
     expect(pageCount(bytes)).toBe(1);
+    expect(bytes.toString('latin1')).toMatch(/\/Subtype\s*\/Image\b/);
   },15000);
 
   it('allows longer multichannel results to paginate instead of clipping readings', async () => {
