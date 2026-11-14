@@ -1,74 +1,934 @@
-import { Document,Image,Page,StyleSheet,Text,View } from '@react-pdf/renderer';
+import {
+  Document,
+  Image,
+  Page,
+  StyleSheet,
+  Text,
+  View,
+} from '@react-pdf/renderer';
+
+import type { ReactNode } from 'react';
 import Decimal from 'decimal.js';
-import { format,parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import type { CertificateData } from '@/schemas/certificate';
 
-const styles = StyleSheet.create({
-  page: { padding: 26,fontFamily: 'Helvetica',fontSize: 9,color: '#111111' },
-  header: { flexDirection: 'row',justifyContent: 'space-between',alignItems: 'flex-start',marginBottom: 10 },
-  titleBlock: { flexGrow: 1,paddingRight: 10 },
-  title: { fontSize: 17,marginBottom: 4,fontWeight: 700 },
-  logo: { width: 120,height: 46,objectFit: 'contain' },
-  factLine: { marginBottom: 2 },
-  subHeading: { marginTop: 8,fontWeight: 700 },
-  row: { flexDirection: 'row',borderBottomWidth: 0.5,borderColor: '#555555' },
-  cell: { flexGrow: 1,flexBasis: 0,padding: 4,borderRightWidth: 0.5,borderColor: '#555555' },
-  table: { borderTopWidth: 0.5,borderLeftWidth: 0.5,borderColor: '#555555',marginVertical: 8 },
-  block: { marginVertical: 4 },
-  footer: { position: 'absolute',bottom: 14,left: 26,right: 26,fontSize: 7 },
-});
+// ============================================================
+// CONSTANTS
+// ============================================================
+
 const EMPTY_TEXT = 'Nil';
-const display = (value: string, places: number) => new Decimal(value).toFixed(places);
-const date = (value: string) => format(parseISO(value),'d-MMM-yy');
-const instrument = (value: CertificateData['balance']) => `${value.makeModel} / S.No: ${value.serialNumber} / Cal due : ${format(parseISO(value.calibrationDueDate),'dd-MM-yyyy')}`;
-const nil = (value: string | null | undefined, empty = EMPTY_TEXT) => {
-  const normalized = typeof value==='string' ? value.trim() : '';
-  return normalized ? normalized : empty;
+
+const COMPANY_NAME = 'VFL Sciences Private Limited';
+
+const COMPANY_ADDRESS =
+  '3rd floor, Kanagamani Complex, Plot No 6, 200ft road, Ponniammanmedu, Madhavaram, Chennai 600110';
+
+const COMPANY_EMAIL = 'info@vflsciences.com';
+
+const COMPANY_WEBSITE = 'www.vflsciences.com';
+
+const COMPANY_CIN = 'U28299TN2023PTC163152';
+
+// ============================================================
+// STYLES
+// ============================================================
+
+const styles = StyleSheet.create({
+  page: {
+    paddingTop: 26,
+    paddingHorizontal: 42,
+    paddingBottom: 95,
+    fontFamily: 'Helvetica',
+    fontSize: 7.5,
+    color: '#111111',
+  },
+
+  // ----------------------------------------------------------
+  // Header
+  // ----------------------------------------------------------
+
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    minHeight: 38,
+    marginBottom: 3,
+  },
+
+  customerBlock: {
+    flexGrow: 1,
+    paddingRight: 10,
+    fontSize: 7.5,
+    lineHeight: 1.1,
+  },
+
+  customerName: {
+    fontWeight: 700,
+  },
+
+  logo: {
+    width: 105,
+    height: 43,
+    objectFit: 'contain',
+  },
+
+  certificateTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+
+  inventoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginBottom: 5,
+    borderTopWidth: 0.6,
+    borderBottomWidth: 0.6,
+    borderColor: '#444444',
+  },
+
+  // ----------------------------------------------------------
+  // General text
+  // ----------------------------------------------------------
+
+  bold: {
+    fontWeight: 700,
+  },
+
+  // ----------------------------------------------------------
+  // Pipette details
+  // ----------------------------------------------------------
+
+  details: {
+    marginBottom: 6,
+  },
+
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 14,
+  },
+
+  detailLabel: {
+    width: '22%',
+  },
+
+  detailValue: {
+    width: '30%',
+    fontWeight: 700,
+  },
+
+  detailExtra: {
+    flex: 1,
+    fontWeight: 700,
+  },
+
+  // ----------------------------------------------------------
+  // Tables
+  // ----------------------------------------------------------
+
+  table: {
+    borderTopWidth: 0.6,
+    borderLeftWidth: 0.6,
+    borderColor: '#444444',
+  },
+
+  tableRow: {
+    flexDirection: 'row',
+  },
+
+  tableCell: {
+    paddingVertical: 2.5,
+    paddingHorizontal: 2,
+    borderRightWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: '#555555',
+    justifyContent: 'center',
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+
+  tableHeader: {
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+
+  volumeGroup: {
+    flexDirection: 'row',
+  },
+
+  // ----------------------------------------------------------
+  // Results tables
+  // ----------------------------------------------------------
+
+  resultsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    marginBottom: 7,
+  },
+
+  resultTable: {
+    width: '49%',
+  },
+
+  // ----------------------------------------------------------
+  // Formula and environmental information
+  // ----------------------------------------------------------
+
+  formula: {
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+
+  environmentalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+
+  envLabel: {
+    fontWeight: 700,
+  },
+
+  envValue: {
+    textAlign: 'center',
+  },
+
+  // ----------------------------------------------------------
+  // Equipment
+  // ----------------------------------------------------------
+
+  equipmentRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+    alignItems: 'flex-start',
+  },
+
+  equipmentLabel: {
+    width: '25%',
+    fontWeight: 700,
+  },
+
+  equipmentValue: {
+    flex: 1,
+    fontWeight: 700,
+  },
+
+  // ----------------------------------------------------------
+  // Service and certification details
+  // ----------------------------------------------------------
+
+  serviceSection: {
+    marginTop: 3,
+    borderTopWidth: 0.6,
+    borderColor: '#555555',
+    paddingTop: 5,
+  },
+
+  serviceRow: {
+    flexDirection: 'row',
+    minHeight: 14,
+    alignItems: 'center',
+  },
+
+  serviceLabel: {
+    width: '25%',
+  },
+
+  serviceValue: {
+    flex: 1,
+    fontWeight: 700,
+  },
+
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    marginBottom: 3,
+  },
+
+  dateItem: {
+    flex: 1,
+  },
+
+  signature: {
+    marginTop: 18,
+    textAlign: 'right',
+    fontWeight: 700,
+    paddingRight: 8,
+  },
+
+  // ----------------------------------------------------------
+  // Footer
+  // ----------------------------------------------------------
+
+  footer: {
+    position: 'absolute',
+    bottom: 23,
+    left: 42,
+    right: 42,
+    alignItems: 'center',
+    fontSize: 6.5,
+    lineHeight: 1.35,
+    textAlign: 'center',
+  },
+
+  footerCompany: {
+    fontWeight: 700,
+  },
+
+  footerCustom: {
+    marginBottom: 3,
+  },
+});
+
+// ============================================================
+// FORMAT HELPERS
+// ============================================================
+
+const display = (
+  value: string | number,
+  places: number,
+): string => {
+  return new Decimal(value).toFixed(places);
 };
 
-function ReadingTable({ data }: { data: CertificateData }) {
-  const count = Math.max(...data.volumes.map((volume) => volume.readings.length));
-  return <View style={styles.table}>
-    <View style={styles.row} fixed><Text style={styles.cell}>Sl.No.</Text>{data.volumes.map((volume) => <Text key={volume.nominalVolumeUl} style={styles.cell}>Volume Set {volume.nominalVolumeUl} uL | Mass (gm) / Actual Volume (uL)</Text>)}</View>
-    {Array.from({ length: count },(_,index) => <View key={index} style={styles.row} wrap={false}>
-      <Text style={styles.cell}>{index+1}</Text>{data.volumes.map((volume) => {
-        const reading = volume.readings[index];
-        return <Text key={volume.nominalVolumeUl} style={styles.cell}>{reading ? `${display(reading.massG,4)} / ${display(reading.volumeUl,2)}` : ''}</Text>;
-      })}
-    </View>)}
-  </View>;
+const date = (value: string): string => {
+  return format(parseISO(value), 'd-MMM-yy');
+};
+
+const nil = (
+  value: string | null | undefined,
+  empty = EMPTY_TEXT,
+): string => {
+  const normalized =
+    typeof value === 'string' ? value.trim() : '';
+
+  return normalized || empty;
+};
+
+const instrument = (
+  value: CertificateData['balance'],
+): string => {
+  return (
+    `${nil(value.makeModel)} / ` +
+    `S.No: ${nil(value.serialNumber)} / ` +
+    `Cal due : ${format(
+      parseISO(value.calibrationDueDate),
+      'dd-MM-yyyy',
+    )}`
+  );
+};
+
+// ============================================================
+// REUSABLE TABLE CELL
+// ============================================================
+
+function Cell({
+  children,
+  width,
+  header = false,
+  height,
+}: {
+  children: ReactNode;
+  width: string;
+  header?: boolean;
+  height?: number;
+}) {
+  return (
+    <View
+      style={[
+        styles.tableCell,
+        { width },
+        height !== undefined ? { height } : {},
+      ]}
+    >
+      <Text style={header ? styles.tableHeader : {}}>
+        {children}
+      </Text>
+    </View>
+  );
 }
 
-/** FR-25/26: database-derived certificate draft; visual approval is a release gate. */
-export function CertificateDocument({ data }: { data: CertificateData }) {
-  return <Document title={`Calibration ${data.inventoryNumber}`}><Page size="LETTER" style={styles.page}>
-    <View style={styles.header}><View style={styles.titleBlock}><Text style={styles.title}>Calibration Certificate</Text><Text>{nil(data.customerName,'')}</Text><Text>{nil(data.address1,'')}</Text><Text>{nil(data.address2,'')}</Text><Text>{nil(data.department,'')}</Text></View>{data.logoUrl ? <Image src={data.logoUrl} style={styles.logo} /> : null}</View>
-    <Text style={styles.factLine}>Inventory No.: {nil(data.inventoryNumber,'')}</Text>
-    <Text style={styles.factLine}>Session No.: {data.sessionNo}</Text>
-    <Text style={styles.factLine}>Pipette Manufacturer: {nil(data.make)}</Text>
-    <Text style={styles.factLine}>Pipette Details: {nil(data.model)}</Text>
-    <Text style={styles.factLine}>No. of Channel: {nil(data.channel)}</Text>
-    <Text style={styles.factLine}>Range: {nil(data.rangeLabel)} uL</Text>
-    <Text style={styles.factLine}>S.No.: {nil(data.serialNumber)}</Text>
-    <Text style={styles.factLine}>Cust ID No.: {nil(data.customerAssetId)}</Text>
-    <Text style={styles.factLine}>Invoice No.: {nil(data.invoiceNumber)}</Text>
-    <Text style={styles.factLine}>Contact: {nil(data.contactName)}</Text>
-    <Text style={styles.factLine}>Email: {nil(data.email)}</Text>
-    <Text style={styles.factLine}>Phone 1: {nil(data.phone1)} | Phone 2: {nil(data.phone2)}</Text>
-    <Text style={styles.factLine}>Service Mode: {nil(data.serviceMode)}</Text>
-    <ReadingTable data={data} />
-    <View wrap={false}>
-      <View style={styles.table}><View style={styles.row}>{['Volume (uL)','Inaccuracy Actual(%)','Inaccuracy Limit','Imprecision Actual(%)','Imprecision Limit'].map((label) => <Text key={label} style={styles.cell}>{label}</Text>)}</View>
-        {data.volumes.map((volume) => <View key={volume.nominalVolumeUl} style={styles.row}>{[volume.nominalVolumeUl,display(volume.inaccuracyActualPct,4),`+/- ${display(volume.inaccuracyLimitPct,1)}%`,display(volume.imprecisionActualPct,4),`+/- ${display(volume.imprecisionLimitPct,1)}%`].map((value,index) => <Text key={index} style={styles.cell}>{value}</Text>)}</View>)}
+// ============================================================
+// ADAPTIVE READING TABLE
+//
+// Supports 1, 2 or 3 volume sets.
+// Each volume set has Mass and Actual Volume columns.
+// Column widths are automatically calculated.
+// ============================================================
+
+function ReadingTable({
+  data,
+}: {
+  data: CertificateData;
+}) {
+  const volumeCount = data.volumes.length;
+
+  const count = Math.max(
+    0,
+    ...data.volumes.map((volume) => volume.readings.length),
+  );
+
+  const serialWidth = 10;
+
+  const volumeGroupWidth =
+    volumeCount > 0
+      ? (100 - serialWidth) / volumeCount
+      : 90;
+
+  const serialStyle = `${serialWidth}%`;
+  const groupStyle = `${volumeGroupWidth}%`;
+
+  return (
+    <View style={styles.table}>
+
+      {/* First header row: Volume set names */}
+
+      <View style={styles.tableRow}>
+        <Cell
+          width={serialStyle}
+          header
+          height={25}
+        >
+          Sl.No.
+        </Cell>
+
+        {data.volumes.map((volume) => (
+          <Cell
+            key={volume.nominalVolumeUl}
+            width={groupStyle}
+            header
+            height={25}
+          >
+            Volume Set {display(volume.nominalVolumeUl, 0)} µL
+          </Cell>
+        ))}
       </View>
-      <Text style={styles.block}>Actual Volume (uL) = Mass Read * Z Factor * 1000</Text>
-      <Text>DD waterTemperature: {display(data.ddWaterTempC,1)} C | Room temp: {display(data.roomTempC,1)} C | Humidity: {display(data.humidityPct,0)}%</Text>
-      <Text>"Z" Correction Value: {display(data.zCorrectionValue,4)} uL/mg | Air pressure: {display(data.airPressureHpa,1)} hPa</Text>
-      <Text style={styles.block}>Balance Used: {instrument(data.balance)}</Text><Text>Thermometer Used: Air - {instrument(data.air)} / Water - {instrument(data.water)}</Text>
-      <Text style={styles.block}>Damaged /Missing parts identified: {nil(data.damagedParts)}</Text><Text>Parts Replaced: {nil(data.replacedParts)}</Text>
-      <Text style={styles.block}>Status: Pass | Serviced by: {nil(data.servicedBy)}</Text><Text>Date of Calibration: {date(data.processDate)} | Reminder Date: {date(data.reminderDate)} | Next Calibration Due: {date(data.dueDate)}</Text>
-      <Text style={{ marginTop: 32 }}>Authorised Signatory ____________________</Text>
+
+      {/* Second header row: Mass and Actual Volume */}
+
+      <View style={styles.tableRow}>
+        <Cell width={serialStyle} header height={23}>
+          {''}
+        </Cell>
+        {data.volumes.map((volume) => (
+          <View
+            key={volume.nominalVolumeUl}
+            style={[
+              styles.volumeGroup,
+              { width: groupStyle },
+            ]}
+          >
+            <Cell
+              width="50%"
+              header
+              height={23}
+            >
+              Mass (gm)
+            </Cell>
+
+            <Cell
+              width="50%"
+              header
+              height={23}
+            >
+              Actual Volume (µL)
+            </Cell>
+          </View>
+        ))}
+      </View>
+
+      {/* Reading rows */}
+
+      {Array.from({ length: count }, (_, index) => (
+        <View
+          key={index}
+          style={styles.tableRow}
+          wrap={false}
+        >
+          {/* Serial number */}
+
+          <Cell width={serialStyle}>
+            {index + 1}
+          </Cell>
+
+          {/* Volume measurements */}
+
+          {data.volumes.map((volume) => {
+            const reading = volume.readings[index];
+
+            return (
+              <View
+                key={volume.nominalVolumeUl}
+                style={[
+                  styles.volumeGroup,
+                  { width: groupStyle },
+                ]}
+              >
+                <Cell width="50%">
+                  {reading
+                    ? display(reading.massG, 4)
+                    : ''}
+                </Cell>
+
+                <Cell width="50%">
+                  {reading
+                    ? display(reading.volumeUl, 2)
+                    : ''}
+                </Cell>
+              </View>
+            );
+          })}
+        </View>
+      ))}
     </View>
-    <Text fixed style={styles.footer} render={({ pageNumber,totalPages }) => `${data.footer}\nInventory No. ${data.inventoryNumber} | Page ${pageNumber} of ${totalPages}`} />
-  </Page></Document>;
+  );
+}
+
+// ============================================================
+// ACCURACY AND PRECISION TABLES
+// ============================================================
+
+function ResultTable({
+  data,
+  type,
+}: {
+  data: CertificateData;
+  type: 'inaccuracy' | 'imprecision';
+}) {
+  const isInaccuracy = type === 'inaccuracy';
+
+  const actualLabel = isInaccuracy
+    ? 'Inaccuracy Actual(%)'
+    : 'Imprecision Actual(%)';
+
+  const limitLabel = isInaccuracy
+    ? 'Inaccuracy Limit'
+    : 'Imprecision Limit';
+
+  return (
+    <View style={[styles.table, styles.resultTable]}>
+
+      <View style={styles.tableRow}>
+        <Cell width="28%" header>
+          Volume (µL)
+        </Cell>
+
+        <Cell width="39%" header>
+          {actualLabel}
+        </Cell>
+
+        <Cell width="33%" header>
+          {limitLabel}
+        </Cell>
+      </View>
+
+      {data.volumes.map((volume) => {
+        const actual = isInaccuracy
+          ? volume.inaccuracyActualPct
+          : volume.imprecisionActualPct;
+
+        const limit = isInaccuracy
+          ? volume.inaccuracyLimitPct
+          : volume.imprecisionLimitPct;
+
+        return (
+          <View
+            key={volume.nominalVolumeUl}
+            style={styles.tableRow}
+            wrap={false}
+          >
+            <Cell width="28%">
+              {display(volume.nominalVolumeUl, 0)}
+            </Cell>
+
+            <Cell width="39%">
+              {display(actual, 4)}
+            </Cell>
+
+            <Cell width="33%">
+              +/- {display(limit, 1)}%
+            </Cell>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ============================================================
+// MAIN CERTIFICATE DOCUMENT
+// ============================================================
+
+export function CertificateDocument({
+  data,
+}: {
+  data: CertificateData;
+}) {
+  return (
+    <Document
+      title={`Calibration ${data.inventoryNumber}`}
+      author={COMPANY_NAME}
+    >
+      <Page
+        size="LETTER"
+        style={styles.page}
+      >
+
+        {/* ==================================================
+            HEADER
+        ================================================== */}
+
+        <View style={styles.header}>
+          <View style={styles.customerBlock}>
+            <Text style={styles.customerName}>
+              {nil(data.customerName, '')}
+            </Text>
+
+            <Text>
+              {nil(data.address1, '')}
+            </Text>
+
+            <Text>
+              {nil(data.address2, '')}
+            </Text>
+
+            <Text>
+              {nil(data.department, '')}
+            </Text>
+          </View>
+
+          {data.logoUrl ? (
+            <Image
+              src={data.logoUrl}
+              style={styles.logo}
+            />
+          ) : null}
+        </View>
+
+        <Text style={styles.certificateTitle}>
+          Calibration Certificate
+        </Text>
+
+        <View style={styles.inventoryRow}>
+          <Text style={styles.bold}>
+            Inventory No.:
+          </Text>
+
+          <Text style={{ marginLeft: 12 }}>
+            {nil(data.inventoryNumber, '')}
+          </Text>
+        </View>
+
+        {/* ==================================================
+            CERTIFICATE AND CUSTOMER DETAILS
+        ================================================== */}
+
+        <View style={styles.details}>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              Pipette Manufacturer
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.make)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              No. of Channel: {nil(data.channel)}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              Pipette Details
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.model)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              Range: {nil(data.rangeLabel)} µL
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              S.No.
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.serialNumber)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              Cust ID No.: {nil(data.customerAssetId)}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              Invoice No.
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.invoiceNumber)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              Contact: {nil(data.contactName)}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              Email
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.email)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              Service Mode: {nil(data.serviceMode)}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              Phone 1
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {nil(data.phone1)}
+            </Text>
+
+            <Text style={styles.detailExtra}>
+              Phone 2: {nil(data.phone2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ==================================================
+            READING TABLE
+        ================================================== */}
+
+        <ReadingTable data={data} />
+
+        {/* ==================================================
+            INACCURACY AND IMPRECISION
+        ================================================== */}
+
+        <View style={styles.resultsContainer}>
+          <ResultTable
+            data={data}
+            type="inaccuracy"
+          />
+
+          <ResultTable
+            data={data}
+            type="imprecision"
+          />
+        </View>
+
+        {/* ==================================================
+            CALCULATION FORMULA
+        ================================================== */}
+
+        <Text style={styles.formula}>
+          Actual Volume (µL) = Mass Read * Z Factor * 1000
+        </Text>
+
+        {/* ==================================================
+            ENVIRONMENTAL CONDITIONS
+        ================================================== */}
+
+        <View style={styles.environmentalRow}>
+          <Text style={styles.envLabel}>
+            DD waterTemperature: (°C)
+          </Text>
+
+          <Text style={[styles.envValue, { width: '12%' }]}>
+            {display(data.ddWaterTempC, 1)}
+          </Text>
+
+          <Text style={styles.envLabel}>
+            Room temp: (°C)
+          </Text>
+
+          <Text style={[styles.envValue, { width: '12%' }]}>
+            {display(data.roomTempC, 1)}
+          </Text>
+
+          <Text style={styles.envLabel}>
+            Humidity: (%)
+          </Text>
+
+          <Text style={[styles.envValue, { flex: 1 }]}>
+            {display(data.humidityPct, 0)}
+          </Text>
+        </View>
+
+        <View style={styles.environmentalRow}>
+          <Text style={styles.envLabel}>
+            "Z" Correction Value:
+          </Text>
+
+          <Text style={[styles.envValue, { width: '17%' }]}>
+            {display(data.zCorrectionValue, 4)}
+          </Text>
+
+          <Text>
+            µL/mg
+          </Text>
+
+          <Text style={[styles.envLabel, { marginLeft: 22 }]}>
+            Air pressure:
+          </Text>
+
+          <Text style={[styles.envValue, { width: '17%' }]}>
+            {display(data.airPressureHpa, 1)}
+          </Text>
+
+          <Text>
+            hPa
+          </Text>
+        </View>
+
+        {/* ==================================================
+            EQUIPMENT DETAILS
+        ================================================== */}
+
+        <View style={styles.equipmentRow}>
+          <Text style={styles.equipmentLabel}>
+            Balance Used:
+          </Text>
+
+          <Text style={styles.equipmentValue}>
+            {instrument(data.balance)}
+          </Text>
+        </View>
+
+        <View style={styles.equipmentRow}>
+          <Text style={styles.equipmentLabel}>
+            Thermometer Used:
+          </Text>
+
+          <Text style={styles.equipmentValue}>
+            Air - {instrument(data.air)}
+            {' / '}
+            Water - {instrument(data.water)}
+          </Text>
+        </View>
+
+        {/* ==================================================
+            SERVICE AND MAINTENANCE DETAILS
+        ================================================== */}
+
+        <View style={styles.serviceSection}>
+
+          <View style={styles.serviceRow}>
+            <Text style={styles.serviceLabel}>
+              Damaged /Missing parts identified:
+            </Text>
+
+            <Text style={styles.serviceValue}>
+              {nil(data.damagedParts)}
+            </Text>
+          </View>
+
+          <View style={styles.serviceRow}>
+            <Text style={styles.serviceLabel}>
+              Parts Replaced:
+            </Text>
+
+            <Text style={styles.serviceValue}>
+              {nil(data.replacedParts)}
+            </Text>
+          </View>
+
+          <View style={[styles.serviceRow, { marginTop: 7 }]}>
+            <Text style={styles.serviceLabel}>
+              Status:
+            </Text>
+
+            <Text style={styles.serviceValue}>
+              Pass
+            </Text>
+          </View>
+
+          <View style={styles.serviceRow}>
+            <Text style={styles.serviceLabel}>
+              Serviced by:
+            </Text>
+
+            <Text style={styles.serviceValue}>
+              {nil(data.servicedBy)}
+            </Text>
+          </View>
+
+          {/* Calibration dates */}
+
+          <View style={styles.dateRow}>
+            <Text style={styles.dateItem}>
+              Date of Calibration: {date(data.processDate)}
+            </Text>
+
+            <Text style={styles.dateItem}>
+              Reminder Date: {date(data.reminderDate)}
+            </Text>
+          </View>
+
+          <View style={styles.dateRow}>
+            <Text style={styles.dateItem}>
+              Next Calibration Due: {date(data.dueDate)}
+            </Text>
+          </View>
+
+          {/* Authorised signatory */}
+
+          <Text style={styles.signature}>
+            Authorised Signatory ____________________
+          </Text>
+        </View>
+
+        {/* ==================================================
+            FOOTER
+        ================================================== */}
+
+        <View
+          fixed
+          style={styles.footer}
+        >
+          <Text style={styles.footerCustom}>
+            {nil(data.footer, '')}
+          </Text>
+
+          <Text style={styles.footerCompany}>
+            {COMPANY_NAME}
+          </Text>
+
+          <Text>
+            {COMPANY_ADDRESS}
+          </Text>
+
+          <Text>
+            Email: {COMPANY_EMAIL}  Website: {COMPANY_WEBSITE}
+          </Text>
+
+          <Text>
+            CIN: {COMPANY_CIN}
+          </Text>
+        </View>
+
+      </Page>
+    </Document>
+  );
 }

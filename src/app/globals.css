@@ -18,7 +18,7 @@ h4 { font-size: 13px; margin-bottom: 12px; }
 .app-shell { display: grid; grid-template-columns: 232px minmax(0,1fr); min-height: 100vh; }
 .sidebar { background: var(--nav); color: #b7cbc1; padding: 30px 20px; display: flex; flex-direction: column; }
 .brand { color: white; display: flex; gap: 12px; align-items: center; font-size: 29px; font-weight: 600; line-height: 1; margin: 0 12px 52px; }
-.brand-logo { width: 30px; height: 30px; border-radius: 6px; }
+.brand-logo { width: 68px; height: 68px; flex-shrink: 0; object-fit: contain; padding: 5px; background: #ffffff; border-radius: 6px; }
 .brand svg { color: #8cd4b4; }
 .brand-sub { display: block; font-size: 10px; letter-spacing: 0; margin-top: 6px; }
 .nav-caption { font-size: 10px; font-weight: 500; margin: 0 12px 12px; }

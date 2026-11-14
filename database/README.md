@@ -4,6 +4,20 @@
 
 Supabase hosts PostgreSQL, so no local PostgreSQL installation is needed for the app. In the Supabase project **Connect** panel, copy a transaction-pooler URL for `DATABASE_URL` and a direct URL for `DIRECT_URL` in `.env`. If your network cannot reach the direct database host, use the session pooler for `DIRECT_URL`. Do not use the transaction pooler for Prisma migrations. If the pooler URL does not include it, add `pgbouncer=true` to `DATABASE_URL` for Prisma. Keep the migration-owner URL separate from the app's runtime URL.
 
+### Vercel connection limits
+
+`EMAXCONNSESSION: max clients reached in session mode` means Supabase's session pooler has exhausted its client connections. Session-mode connections remain assigned while application clients stay connected, so Vercel instances and local development can exhaust the same shared project's pool even with few users. Shorter calibration transactions alone do not fix this limit.
+
+In Vercel **Settings > Environment Variables**, set the runtime `DATABASE_URL` to the **Transaction pooler** URL copied from Supabase Connect (normally port **6543** on a `*.pooler.supabase.com` host). For this Prisma 6 client, include `pgbouncer=true&connection_limit=1`, retaining any existing SSL options. Example with placeholders only:
+
+```dotenv
+DATABASE_URL=postgresql://APP-ROLE.PROJECT-REF:ENCODED-PASSWORD@POOLER-HOST:6543/postgres?pgbouncer=true&connection_limit=1
+```
+
+Do not merely change the port on a direct `db.PROJECT-REF.supabase.co` host; copy the correct transaction-pooler host and username, retaining the restricted app role. Keep `DIRECT_URL` on a direct or session-pooler connection for migrations. Update every Vercel environment used for testing, then redeploy; existing deployments retain their old environment settings. Use the transaction pooler for local live development too when sharing the project, and restart the local app after changing its URL.
+
+The app reuses one Prisma client per process, including production, and defaults its connection limit to **1** unless the URL explicitly supplies a different value. This is a per-process limit, not a global limit across Vercel instances. It does not change `DIRECT_URL` or Prisma CLI migration connections. No database migration is needed. If capacity errors persist after the pooler change, inspect Supabase connection metrics and other clients using the project; do not blindly increase pool size or terminate unrelated sessions. Retest resuming a session, starting calibration and saving readings after deployment.
+
 From the workspace root, apply the schema and reference data with:
 
 ```powershell
