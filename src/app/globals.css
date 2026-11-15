@@ -16,7 +16,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
 h3 { font-size: 14px; margin-bottom: 10px; }
 h4 { font-size: 13px; margin-bottom: 12px; }
 .app-shell { display: grid; grid-template-columns: 232px minmax(0,1fr); min-height: 100vh; }
-.sidebar { background: var(--nav); color: #b7cbc1; padding: 30px 20px; display: flex; flex-direction: column; }
+.sidebar { background: var(--nav); color: #b7cbc1; padding: 0 20px 30px; display: flex; flex-direction: column; }
 .brand { flex-direction: column; gap: 10px; margin: -30px -20px 36px; padding: 28px 20px 20px; background: #fff; color: var(--nav); }
 .brand-logo { width: 124px; height: 124px; padding: 0; background: transparent; border-radius: 0; }
 .brand svg { color: #8cd4b4; }
