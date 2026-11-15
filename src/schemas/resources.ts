@@ -28,3 +28,4 @@ export const querySchema = z.object({ page: z.coerce.number().int().min(1).defau
 export const rowSchema = z.record(z.string(), z.unknown());
 export const listSchema = z.object({ data: z.array(rowSchema), meta: z.object({ page: z.number(), pageSize: z.number(), total: z.number() }) });
 export type Row = z.infer<typeof rowSchema>;
+export const exportQuerySchema = z.object({ from: dateSchema.optional(), to: dateSchema.optional() });

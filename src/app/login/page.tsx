@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; code?: string; reset?: string }> }) {
   const { error,code,reset } = await searchParams;
   const needsApproval = error==='approval' || (error==='CredentialsSignin' && code==='approval_required');
-  return <main className="login-page"><div className="login-content"><div className="eyebrow">VFL SCIENCES</div><h1>Pipette calibration</h1>{reset==='1' ? <p role="status">Your password has been updated. Sign in with your new password. Existing administrator approval requirements still apply.</p> : null}<form action={async (formData: FormData) => {
+  return <main className="login-page"><div className="login-content"><img src="/public/VFL_Logo.png" alt="VFL Sciences logo" className="login-logo" /><div className="eyebrow">VFL SCIENCES</div><h1>Pipette calibration</h1>{reset==='1' ? <p role="status">Your password has been updated. Sign in with your new password. Existing administrator approval requirements still apply.</p> : null}<form action={async (formData: FormData) => {
     'use server';
     try {
       await signIn('credentials', { email: formData.get('email'), password: formData.get('password'), redirectTo: '/assets' });

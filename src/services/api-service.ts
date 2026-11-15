@@ -14,6 +14,10 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
   if (resource==='assets' && id && parts.length===2) return getAsset(actor,idSchema.parse(id));
   if (resource==='lab-dimensions' && id && parts.length===2) return getLabConditions(actor,idSchema.parse(id));
   if (resource==='sessions' && id && parts.length===2) return getSession(actor,idSchema.parse(id));
+  if (resource==='exports' && id==='calibrations' && parts.length===2) {
+  const { exportCompletedCalibrations } = await import('./export-service');
+  return exportCompletedCalibrations(actor,query);
+  }
   if (resource==='sessions' && id && action==='certificate-download' && parts.length===3) {
     const sessionId = idSchema.parse(id);
     const { downloadSessionCertificate } = await import('./certificate-service');
