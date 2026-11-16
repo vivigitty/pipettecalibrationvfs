@@ -13,8 +13,8 @@ An enterprise web application that lets VFL Sciences engineers register customer
 
 | Role | Capabilities |
 |---|---|
-| **Technician** (service engineer) | Create customers/assets, enter lab dimensions, damages, run calibrations, generate certificates |
-| **Admin** | Everything a technician can do + manage range limits, users, reference data |
+| **Technician** (service engineer) | Create customers/assets, enter lab dimensions, damages, run calibrations, generate certificates,manage range limits and the instrument register |
+| **Admin** | Everything a technician can do + users, reference data |
 | **Executive** | Read-only access to all data, including exec-only fields (device IP, entry location, engineer timings) |
 
 ---

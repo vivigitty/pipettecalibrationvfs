@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
 
   customerName: {
     fontWeight: 700,
+    fontSize: 15,
   },
 
   logo: {
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
 
   inventoryRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingVertical: 4,
     marginBottom: 5,
@@ -219,7 +220,6 @@ const styles = StyleSheet.create({
 
   equipmentValue: {
     flex: 1,
-    fontWeight: 700,
   },
 
   // ----------------------------------------------------------
@@ -259,12 +259,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  signature: {
-    marginTop: 18,
-    textAlign: 'right',
-    fontWeight: 700,
-    paddingRight: 8,
-  },
+ signatureBlock: {
+  marginTop: 8,
+  alignItems: 'flex-end',
+  paddingRight: 8,
+},
+
+signatureImage: {
+  width: 90,
+  height: 28,
+  objectFit: 'contain',
+},
+
+signature: {
+  fontWeight: 700,
+},
+
+signatureDate: {
+  marginTop: 2,
+},
 
   // ----------------------------------------------------------
   // Footer
@@ -720,58 +733,23 @@ export function CertificateDocument({
         {/* ==================================================
             ENVIRONMENTAL CONDITIONS
         ================================================== */}
-
-        <View style={styles.environmentalRow}>
-          <Text style={styles.envLabel}>
-            DD waterTemperature: (°C)
-          </Text>
-
-          <Text style={[styles.envValue, { width: '12%' }]}>
-            {display(data.ddWaterTempC, 1)}
-          </Text>
-
-          <Text style={styles.envLabel}>
-            Room temp: (°C)
-          </Text>
-
-          <Text style={[styles.envValue, { width: '12%' }]}>
-            {display(data.roomTempC, 1)}
-          </Text>
-
-          <Text style={styles.envLabel}>
-            Humidity: (%)
-          </Text>
-
-          <Text style={[styles.envValue, { flex: 1 }]}>
-            {display(data.humidityPct, 0)}
-          </Text>
+      <View style={[styles.table, { marginBottom: 8 }]}>
+        <View style={styles.tableRow}>
+          <Cell width="20%" header>DD Water Temp (°C)</Cell>
+          <Cell width="20%" header>Room Temp (°C)</Cell>
+          <Cell width="20%" header>Humidity (%)</Cell>
+          <Cell width="20%" header>"Z" Correction (µL/mg)</Cell>
+          <Cell width="20%" header>Air Pressure (hPa)</Cell>
         </View>
-
-        <View style={styles.environmentalRow}>
-          <Text style={styles.envLabel}>
-            "Z" Correction Value:
-          </Text>
-
-          <Text style={[styles.envValue, { width: '17%' }]}>
-            {display(data.zCorrectionValue, 4)}
-          </Text>
-
-          <Text>
-            µL/mg
-          </Text>
-
-          <Text style={[styles.envLabel, { marginLeft: 22 }]}>
-            Air pressure:
-          </Text>
-
-          <Text style={[styles.envValue, { width: '17%' }]}>
-            {display(data.airPressureHpa, 1)}
-          </Text>
-
-          <Text>
-            hPa
-          </Text>
+        <View style={styles.tableRow}>
+          <Cell width="20%">{display(data.ddWaterTempC, 1)}</Cell>
+          <Cell width="20%">{display(data.roomTempC, 1)}</Cell>
+          <Cell width="20%">{display(data.humidityPct, 0)}</Cell>
+          <Cell width="20%">{display(data.zCorrectionValue, 4)}</Cell>
+          <Cell width="20%">{display(data.airPressureHpa, 1)}</Cell>
         </View>
+      </View>
+
 
         {/* ==================================================
             EQUIPMENT DETAILS
@@ -851,10 +829,6 @@ export function CertificateDocument({
             <Text style={styles.dateItem}>
               Date of Calibration: {date(data.processDate)}
             </Text>
-
-            <Text style={styles.dateItem}>
-              Reminder Date: {date(data.reminderDate)}
-            </Text>
           </View>
 
           <View style={styles.dateRow}>
@@ -865,9 +839,17 @@ export function CertificateDocument({
 
           {/* Authorised signatory */}
 
-          <Text style={styles.signature}>
-            Authorised Signatory ____________________
-          </Text>
+          <View style={styles.signatureBlock}>
+            {data.signatureUrl ? (
+              <Image src={data.signatureUrl} style={styles.signatureImage} />
+            ) : null}
+            <Text style={[styles.signature, data.signatureUrl ? {} : { marginTop: 14 }]}>
+              Authorised Signatory ____________________
+            </Text>
+            {data.signatureDate ? (
+              <Text style={styles.signatureDate}>Date: {date(data.signatureDate)}</Text>
+            ) : null}
+          </View>
         </View>
 
         {/* ==================================================

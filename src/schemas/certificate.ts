@@ -8,7 +8,7 @@ export const certificateSchema = z.object({
   serviceMode: z.string(),sessionNo: z.number().int().positive(),reminderDate: z.string(),
   processDate: z.string(),dueDate: z.string(),servicedBy: z.string(),ddWaterTempC: z.string(),roomTempC: z.string(),humidityPct: z.string(),
   airPressureHpa: z.string(),zCorrectionValue: z.string(),balance: instrumentSchema,air: instrumentSchema,water: instrumentSchema,
-  damagedParts: z.string(),replacedParts: z.string(),logoUrl: z.string().nullable(),footer: z.string(),
+  damagedParts: z.string(),replacedParts: z.string(),logoUrl: z.string().nullable(),signatureUrl: z.string().nullable(),signatureDate: z.string().nullable(),footer: z.string(),
   volumes: z.array(z.object({ nominalVolumeUl: z.string(),inaccuracyActualPct: z.string(),imprecisionActualPct: z.string(),inaccuracyLimitPct: z.string(),imprecisionLimitPct: z.string(),
     readings: z.array(z.object({ massG: z.string(),volumeUl: z.string() })) })),
 });

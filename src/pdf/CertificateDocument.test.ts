@@ -58,6 +58,8 @@ const data = {
   replacedParts: 'Nil',
   logoUrl: null,
   footer: 'LAYOUT PREVIEW ONLY — NOT A VALID CERTIFICATE',
+  signatureUrl: null,
+  signatureDate: null,
 
   volumes: ['10', '50', '100'].map((nominalVolumeUl) => ({
     nominalVolumeUl,
@@ -103,4 +105,12 @@ describe('Approved certificate layout', () => {
     const bytes = await renderToBuffer(CertificateDocument({ data: input }));
     expect(pageCount(bytes)).toBeGreaterThan(1);
   },15000);
+
+  it('keeps one page with a signature image and date', async () => {
+  const logo = await readFile(new URL('../../public/VFL_Logo.png',import.meta.url));
+  const url = `data:image/png;base64,${logo.toString('base64')}`;
+  const input = certificateSchema.parse({ ...data,logoUrl: url,signatureUrl: url,signatureDate: '2026-11-14' });
+  expect(pageCount(await renderToBuffer(CertificateDocument({ data: input })))).toBe(1);
+},15000);
+
 });

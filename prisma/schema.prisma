@@ -119,7 +119,7 @@ model Asset {
   serialNumber     String               @map("serial_number") @db.VarChar(100)
   inventoryNumber  String               @unique @map("inventory_number") @db.VarChar(100)
   customerAssetId  String?              @map("customer_asset_id") @db.VarChar(100)
-  invoiceNumber    String               @map("invoice_number") @db.VarChar(100)
+  invoiceNumber    String?              @map("invoice_number") @db.VarChar(100)
   progress         AssetProgress        @default(not_started)
   createdBy        String               @map("created_by") @db.Uuid
   createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -190,6 +190,7 @@ model CalibrationSession {
   startTime               DateTime                  @default(now()) @map("start_time") @db.Timestamptz(6)
   endTime                 DateTime?                 @map("end_time") @db.Timestamptz(6)
   oneDispensingPerChannel Boolean                   @default(false) @map("one_dispensing_per_channel")
+  servicedBy              String?                   @map("serviced_by") @db.VarChar(120)
   deviceIp                String?                   @map("device_ip") @db.Inet
   entryLocation           String?                   @map("entry_location") @db.VarChar(200)
   inaccuracyStatus        ResultStatus              @default(pending) @map("inaccuracy_status")

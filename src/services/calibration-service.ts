@@ -22,7 +22,7 @@ export async function startSession(actor: Actor, assetId: string, raw: unknown, 
     const derived = parseRange(range.rangeLabel,range.channel);
     if (!range.isActive || limits.length!==derived.timesToTest || derived.points.some((point) => !limits.some((limit) => limit.testPointPct===point.pct && point.volume.eq(limit.nominalVolumeUl.toString())))) throw new BusinessRuleError('LIMITS_REQUIRED','Capture all planned volume limits before calibration');
     const dates = calibrationDates(lab.processDate.toISOString().slice(0,10),input.nextCalibrationMonths);
-    const session = await tx.calibrationSession.create({ data: { ...input,assetId,customerId: asset.customerId,rangeThresholdId: range.id,sessionNo: (previous?.sessionNo ?? 0)+1,processDate: lab.processDate,dueDate: new Date(dates.dueDate),reminderDate: new Date(dates.reminderDate),createdBy: actor.id } });
+    const session = await tx.calibrationSession.create({ data: { ...input,servicedBy: input.servicedBy ?? actor.displayName,assetId,customerId: asset.customerId,rangeThresholdId: range.id,sessionNo: (previous?.sessionNo ?? 0)+1,processDate: lab.processDate,dueDate: new Date(dates.dueDate),reminderDate: new Date(dates.reminderDate),createdBy: actor.id } });
     const audits: AuditEntry[] = [];
     const plans = planLots(range.rangeLabel,range.channel,input.oneDispensingPerChannel);
     for (const limit of limits) {

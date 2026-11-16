@@ -11,7 +11,7 @@ export const resourceSchema = z.enum(['customers','ranges','assets','instruments
 export type Resource = z.infer<typeof resourceSchema>;
 export const customerSchema = z.strictObject({ customerName: text(200), department: text(150), address1: text(250), address2: optionalText(250), email: z.email(), phone1: text(30), phone2: optionalText(30), contactName: text(150) });
 export const rangeSchema = z.strictObject({ rangeLabel: text(30), channel: z.enum(['single','eight','twelve']), make: text(), model: text(), limits: z.array(z.strictObject({ testPointPct: z.union([z.literal(10),z.literal(50),z.literal(100)]), inaccuracyLimitPct: decimalSchema, imprecisionLimitPct: decimalSchema })).min(1).max(3) });
-export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: text() });
+export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: optionalText() });
 export const assetBatchSchema = z.strictObject({ assets: z.array(assetSchema).min(1).max(50) });
 export const instrumentSchema = z.strictObject({ instrumentType: z.enum(['balance','air_thermometer','water_thermometer']), makeModel: text(150), serialNumber: text(), calibrationDueDate: dateSchema });
 export type InstrumentType = z.infer<typeof instrumentSchema>['instrumentType'];
@@ -19,7 +19,6 @@ export const labSchema = z.strictObject({ processDate: dateSchema, serviceMode: 
 export const damageSchema = z.strictObject({ observationNotes: text(3000), damagedPartName: text(150), partReplaced: z.boolean(), replacedPartSerialNumber: optionalText(), partCost: z.string().regex(/^\d+(\.\d{1,2})?$/).nullish() }).superRefine((data, ctx) => {
   if (data.partReplaced && (!data.replacedPartSerialNumber || !data.partCost)) ctx.addIssue({ code: 'custom', path: ['replacedPartSerialNumber'], message: 'Replacement serial and cost are required' });
 });
-export const startSessionSchema = z.strictObject({ labDimensionId: idSchema, nextCalibrationMonths: z.coerce.number().int().min(1).max(60), oneDispensingPerChannel: z.boolean().default(false) });
 export const readingsSchema = z.strictObject({ masses: z.array(decimalSchema).length(10) });
 export const userSchema = z.strictObject({ email: z.email(), displayName: text(120), externalSubject: text(255), role: z.enum(['technician','admin','executive']), isActive: z.boolean().default(true) });
 export const userUpdateSchema = z.strictObject({ role: userSchema.shape.role.optional(),isActive: z.boolean().optional(),displayName: userSchema.shape.displayName.optional() }).refine((value) => Object.keys(value).length>0,'Provide at least one change');
@@ -29,3 +28,4 @@ export const rowSchema = z.record(z.string(), z.unknown());
 export const listSchema = z.object({ data: z.array(rowSchema), meta: z.object({ page: z.number(), pageSize: z.number(), total: z.number() }) });
 export type Row = z.infer<typeof rowSchema>;
 export const exportQuerySchema = z.object({ from: dateSchema.optional(), to: dateSchema.optional() });
+export const startSessionSchema = z.strictObject({ labDimensionId: idSchema, nextCalibrationMonths: z.coerce.number().int().min(1).max(60), oneDispensingPerChannel: z.boolean().default(false), servicedBy: optionalText(120) });
