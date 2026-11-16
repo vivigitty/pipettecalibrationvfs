@@ -42,7 +42,7 @@ export function ResourceList({ resource,actor }: { resource: Resource; actor: Ac
   const view = config[resource];
   const isFormOpen = params.get('new')==='1';
   const editing = resource==='ranges' ? query.data?.data.find((row) => text(row,'id')===params.get('edit')) : undefined;
-  const isReadOnly = actor.isPreview || actor.role==='executive' || (['ranges','instruments','users'].includes(resource) && actor.role!=='admin');
+  const isReadOnly = actor.isPreview || actor.role==='executive' || (['users'].includes(resource) && actor.role!=='admin');
   const updateUrl = (key: string,value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key,value); else next.delete(key);
@@ -96,7 +96,7 @@ export function ResourceList({ resource,actor }: { resource: Resource; actor: Ac
   };
   const readyIds = (query.data?.data ?? []).map((row) => text(row,'latestSessionId')).filter(Boolean);
   return <><div className="page-heading"><div><div className="eyebrow">{view.subtitle}</div><h1>{view.title}</h1></div><div className="heading-actions">{resource==='assets' ? <ExportCsvButton isDisabled={actor.isPreview} /> : null}<button className="button primary" onClick={() => { updateUrl('new','1'); }} disabled={!actor.isPreview && isReadOnly}><Plus size={17} />{view.action}</button></div></div>
-    {isFormOpen ? resource==='assets' ? <AssetBatchForm isReadOnly={isReadOnly} onClose={() => { updateUrl('new',''); }} /> : <ResourceForm resource={resource} isReadOnly={isReadOnly} canManageInstruments={actor.isPreview || actor.role==='admin'} onClose={() => { updateUrl('new',''); }} /> : null}
+    {isFormOpen ? resource==='assets' ? <AssetBatchForm isReadOnly={isReadOnly} onClose={() => { updateUrl('new',''); }} /> : <ResourceForm resource={resource} isReadOnly={isReadOnly} canManageInstruments={actor.isPreview || actor.role!=='executive'} onClose={() => { updateUrl('new',''); }} /> : null}
     {editing ? <ResourceForm key={text(editing,'id')} resource="ranges" initialRow={editing} isReadOnly={isReadOnly} onClose={() => { updateUrl('edit',''); }} /> : null}
     <section className="register-section"><div className="register-top"><h2>{resource==='assets' ? 'All pipettes' : 'All records'} <span className="count">{query.data?.meta.total ?? '-'}</span></h2><span className="muted">{query.isFetching ? 'Updating...' : 'Latest records'}</span></div>
       <form className="filter-bar" onSubmit={filter}><label className="search-field"><Search size={17} /><input type="search" name="search" aria-label="Search records" defaultValue={params.get('search') ?? ''} placeholder={resource==='assets' ? 'Search inventory, serial or invoice...' : 'Search records...'} /></label>

@@ -15,7 +15,7 @@ export async function listResources(actor: Actor, resource: Resource, raw: unkno
 }
 
 export async function createResource(actor: Actor, resource: Resource, raw: unknown, requestId: string) {
-  authorizeWrite(actor, ['ranges','instruments','users'].includes(resource));
+  authorizeWrite(actor, ['instruments','users'].includes(resource));
   switch (resource) {
     case 'customers': return transaction(async (tx) => {
       const customer = await tx.customer.create({ data: { ...customerSchema.parse(raw),createdBy: actor.id } });

@@ -23,7 +23,7 @@ export async function updateUser(actor: Actor, id: string, raw: unknown, request
 }
 
 export async function updateLimits(actor: Actor, id: string, raw: unknown, requestId: string) {
-  authorizeWrite(actor,true);
+  authorizeWrite(actor);
   const { limits } = rangeSchema.pick({ limits: true }).parse(raw);
   return transaction(async (tx) => {
     const range = await tx.rangeThreshold.findUnique({ where: { id } });

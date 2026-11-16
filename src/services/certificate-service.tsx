@@ -35,7 +35,7 @@ async function buildCertificatePdf(tx: Prisma.TransactionClient, sessionId: stri
   if (lots.length===0 || readings.length!==lots.length*10 || volumes.some((volume) => volume.inaccuracyResult!=='pass' || volume.imprecisionResult!=='pass')) throw new BusinessRuleError('INCOMPLETE_SESSION','All lots and passing volume results are required');
   const env = getEnv();
   const [balance,air,water,calibrator] = await Promise.all([tx.instrument.findUniqueOrThrow({ where: { id: lab.balanceInstrumentId } }),tx.instrument.findUniqueOrThrow({ where: { id: lab.airInstrumentId } }),tx.instrument.findUniqueOrThrow({ where: { id: lab.waterThermometerInstrumentId } }),tx.user.findUniqueOrThrow({ where: { id: lab.calibratedByUserId } })]);
-  const data = certificateSchema.parse(JSON.parse(JSON.stringify({ ...asset,...customer,make: range.make,model: range.model,rangeLabel: range.rangeLabel,channel: `${range.channel} channel`,...lab,sessionNo: session.sessionNo,reminderDate: session.reminderDate,dueDate: session.dueDate,servicedBy: session.servicedBy?.trim() || calibrator.displayName || user.displayName,balance,air,water,logoUrl: await resolveCertificateLogo(env.CERTIFICATE_LOGO_URL),footer: env.CERTIFICATE_FOOTER,
+  const data = certificateSchema.parse(JSON.parse(JSON.stringify({ ...asset,...customer,make: range.make,model: range.model,rangeLabel: range.rangeLabel,channel: `${range.channel} channel`,...lab,sessionNo: session.sessionNo,reminderDate: session.reminderDate,dueDate: session.dueDate,servicedBy: session.servicedBy?.trim() || calibrator.displayName || user.displayName,balance,air,water,logoUrl: await resolveCertificateLogo(env.CERTIFICATE_LOGO_URL),footer: env.CERTIFICATE_FOOTER,signatureUrl: env.CERTIFICATE_SIGNATURE_ENABLED==='true' ? await resolveCertificateSignature() : null,signatureDate: signatureDate(env.CERTIFICATE_SIGNATURE_DATE,session.processDate),
     damagedParts: damages.map((damage) => damage.damagedPartName).join(', ') || 'Nil',replacedParts: damages.filter((damage) => damage.partReplaced).map((damage) => damage.damagedPartName).join(', ') || 'Nil',
     volumes: volumes.map((volume) => ({ ...volume,readings: lots.filter((lot) => lot.calibrationVolumeResultId===volume.id).flatMap((lot) => readings.filter((reading) => reading.calibrationLotId===lot.id).sort((left,right) => left.readingNo-right.readingNo)) })) })));
   const bytes = await renderToBuffer(<CertificateDocument data={data} />);
@@ -53,4 +53,19 @@ async function resolveCertificateLogo(fallbackUrl?: string) {
     if (fallbackUrl) return fallbackUrl;
     throw new BusinessRuleError('TEMPLATE_UNAPPROVED','VFL logo is missing. Add public/VFL_Logo.png before certificate issuance');
   }
+}
+
+async function resolveCertificateSignature() {
+  try {
+    const bytes = await readFile(path.join(process.cwd(),'public','VFL_Signature.png'));
+    return `data:image/png;base64,${bytes.toString('base64')}`;
+  } catch {
+    throw new BusinessRuleError('TEMPLATE_UNAPPROVED','Signature is enabled but public/VFL_Signature.png is missing');
+  }
+}
+
+function signatureDate(mode: 'none' | 'calibration' | 'issue', processDate: Date) {
+  if (mode==='calibration') return processDate.toISOString().slice(0,10);
+  if (mode==='issue') return new Date().toISOString().slice(0,10);
+  return null;
 }

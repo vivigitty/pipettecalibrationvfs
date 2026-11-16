@@ -82,6 +82,13 @@ function pageCount(bytes: Buffer) {
 }
 
 describe('Approved certificate layout', () => {
+  it('defaults missing signature metadata to null', () => {
+    const { signatureUrl: _signatureUrl,signatureDate: _signatureDate,...withoutSignature } = data;
+    const parsed = certificateSchema.parse(withoutSignature);
+    expect(parsed.signatureUrl).toBeNull();
+    expect(parsed.signatureDate).toBeNull();
+  });
+
   it.each([1,3])('fits %i volume sets with ten readings and the production logo on one page', async (volumeCount) => {
     const logo = await readFile(new URL('../../public/VFL_Logo.png',import.meta.url));
     const input = certificateSchema.parse({
