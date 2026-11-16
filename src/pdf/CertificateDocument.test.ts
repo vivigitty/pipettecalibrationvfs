@@ -83,7 +83,7 @@ function pageCount(bytes: Buffer) {
 
 describe('Approved certificate layout', () => {
   it('defaults missing signature metadata to null', () => {
-    const { signatureUrl: _signatureUrl,signatureDate: _signatureDate,...withoutSignature } = data;
+    const withoutSignature = { ...data,signatureUrl: undefined,signatureDate: undefined };
     const parsed = certificateSchema.parse(withoutSignature);
     expect(parsed.signatureUrl).toBeNull();
     expect(parsed.signatureDate).toBeNull();
