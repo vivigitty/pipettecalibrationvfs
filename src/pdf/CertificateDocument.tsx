@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
 },
 
 signatureImage: {
-  width: 150,
+  width: 100,
   height: 80,
   objectFit: 'contain',
 },
@@ -617,9 +617,6 @@ export function CertificateDocument({
               {nil(data.address2, '')}
             </Text>
 
-            <Text>
-              {nil(data.department, '')}
-            </Text>
           </View>
 
           {data.logoUrl ? (
