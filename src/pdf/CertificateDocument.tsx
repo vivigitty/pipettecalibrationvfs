@@ -262,14 +262,14 @@ const styles = StyleSheet.create({
   },
 
  signatureBlock: {
-  marginTop: 0,
+  marginTop: 2,
   alignItems: 'flex-end',
   paddingRight: 8,
 },
 
 signatureImage: {
-  width: 120,
-  height: 70,
+  width: 150,
+  height: 80,
   objectFit: 'contain',
 },
 
