@@ -7,7 +7,7 @@ import { text } from '@/features/shared/api';
 import { useReadings } from './use-readings';
 
 export function ReadingGrid({ sessionId,lot,readings,isReadOnly }: { sessionId: string; lot: Row; readings: Row[]; isReadOnly: boolean }) {
-  const { form,save } = useReadings(sessionId,text(lot,'lotNo'),readings.map((reading) => text(reading,'massG')),isReadOnly);
+  const { form,save } = useReadings(sessionId,text(lot,'lotNo'),readings.map((reading) => text(reading,'massG')));
   const paste = (event: ClipboardEvent<HTMLInputElement>) => {
     const values = event.clipboardData.getData('text').trim().split(/[\s,;]+/);
     if (values.length!==10) return;

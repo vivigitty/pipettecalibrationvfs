@@ -11,7 +11,7 @@ import { ValidationError } from '@/lib/errors';
 export async function derivePreview(actor: Actor, resource: string, raw: unknown) {
   try {
     if (resource==='range-plan') {
-      const input = z.object({ rangeLabel: z.string().max(30),channel: z.enum(['single','eight','twelve']) }).parse(raw);
+      const input = z.object({ rangeLabel: z.string().max(30),channel: z.enum(['single','eight','twelve','sixteen','twenty_four']) }).parse(raw);
       const plan = parseRange(input.rangeLabel,input.channel);
       return { timesToTest: plan.timesToTest,repeats: plan.repeats,points: plan.points.map((point) => ({ pct: point.pct,volume: point.volume.toString() })) };
     }

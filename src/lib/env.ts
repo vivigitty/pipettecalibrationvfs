@@ -11,8 +11,6 @@ const envSchema = z.object({
   Z_SOURCE_VERSION: z.string().default('ISO8655-6:2022-TableA1-transcribed-UNVERIFIED'),
   CERTIFICATE_TEMPLATE_APPROVED: z.enum(['true', 'false']).default('false'),
   CERTIFICATE_LOGO_URL: z.string().optional(), CERTIFICATE_FOOTER: z.string().optional(),
-  CERTIFICATE_SIGNATURE_ENABLED: z.enum(['true', 'false']).default('false'),
-  CERTIFICATE_SIGNATURE_DATE: z.enum(['none', 'calibration', 'issue']).default('none'),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === 'production' && env.APP_MODE === 'preview') ctx.addIssue({ code: 'custom', message: 'Preview mode is forbidden in production' });
   if (env.APP_MODE === 'live') {

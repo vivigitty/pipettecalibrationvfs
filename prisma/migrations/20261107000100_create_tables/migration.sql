@@ -1,7 +1,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
-CREATE TYPE channel_type AS ENUM ('single','eight','twelve');
+CREATE TYPE channel_type AS ENUM ('single','eight','twelve','sixteen','twenty_four');
 CREATE TYPE service_mode AS ENUM ('onsite','offsite');
 CREATE TYPE asset_progress AS ENUM ('not_started','in_progress','completed');
 CREATE TYPE session_status AS ENUM ('in_progress','completed','abandoned');

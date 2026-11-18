@@ -21,7 +21,7 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
   if (resource==='sessions' && id && action==='certificate-download' && parts.length===3) {
     const sessionId = idSchema.parse(id);
     const { downloadSessionCertificate } = await import('./certificate-service');
-    return downloadSessionCertificate(actor,sessionId);
+    return downloadSessionCertificate(actor,sessionId,query);
   }
   throw new NotFoundError('Endpoint not found');
 }
@@ -35,6 +35,10 @@ export async function writeApi(actor: Actor, method: string, parts: string[], ra
   if (method==='POST' && resource==='assets' && action==='sessions' && parts.length===3) return startSession(actor,resourceId,raw,requestId);
   if (method==='POST' && resource==='assets' && action==='damages' && parts.length===3) return createDamage(actor,resourceId,raw,requestId);
   if (method==='POST' && resource==='sessions' && action==='complete' && parts.length===3) return completeSession(actor,resourceId,requestId);
+  if (method==='POST' && resource==='sessions' && action==='certificate-download' && parts.length===3) {
+    const { downloadSessionCertificate } = await import('./certificate-service');
+    return downloadSessionCertificate(actor,resourceId,raw);
+  }
   if (method==='PATCH' && resource==='sessions' && action==='lots' && parts.length===4) return saveLot(actor,resourceId,z.coerce.number().int().min(1).max(36).parse(lot),raw,requestId);
   throw new NotFoundError('Endpoint not found');
 }

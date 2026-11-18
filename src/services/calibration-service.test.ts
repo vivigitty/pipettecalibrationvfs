@@ -71,25 +71,20 @@ describe('Calibration transaction round trips and audit snapshots', () => {
     tx.labDimension.findUniqueOrThrow.mockResolvedValue({ zCorrectionValue: decimal('1') });
     tx.calibrationLot.findUnique.mockResolvedValue({ id: 'lot',nominalVolumeUl: decimal('100'),calibrationVolumeResultId: 'volume' });
     const before = { id: 'reading-1',readingNo: 1,massG: decimal('0.09') };
-    const readings = Array.from({ length: 10 },(_, index) => ({ id: `reading-${index+1}`,readingNo: index+1,volumeUl: decimal('100') }));
-    tx.calibrationReading.findMany.mockResolvedValueOnce([before]).mockResolvedValueOnce(readings);
+    tx.calibrationReading.findMany.mockResolvedValueOnce([before]);
     tx.calibrationReading.upsert.mockImplementation(({ create }) => Promise.resolve({ id: `reading-${create.readingNo}`,...create }));
-    tx.calibrationLot.update.mockResolvedValue({ id: 'lot',meanVolumeUl: decimal('100') });
-    tx.calibrationLot.findMany.mockResolvedValue([{ id: 'lot' }]);
-    tx.calibrationVolumeResult.findUniqueOrThrow.mockResolvedValue({ id: 'volume',nominalVolumeUl: decimal('100'),inaccuracyLimitPct: decimal('1'),imprecisionLimitPct: decimal('1') });
-    tx.calibrationVolumeResult.update.mockImplementation(({ data }) => Promise.resolve({ id: 'volume',...data }));
     mocks.sessionDetail.mockResolvedValue({ saved: true });
 
     await expect(saveLot(actor,'session',1,{ masses: Array.from({ length: 10 },() => '0.1') },'request')).resolves.toEqual({ saved: true });
 
-    expect(tx.calibrationReading.findMany).toHaveBeenCalledTimes(2);
+    expect(tx.calibrationReading.findMany).toHaveBeenCalledTimes(1);
     expect(tx.calibrationReading.upsert).toHaveBeenCalledTimes(10);
     expect(tx.auditLog.createMany).toHaveBeenCalledTimes(1);
     const audits = tx.auditLog.createMany.mock.calls[0]?.[0].data;
-    expect(audits).toHaveLength(12);
+    expect(audits).toHaveLength(10);
     expect(audits?.[0]).toMatchObject({ entityId: 'reading-1',beforeData: { massG: '0.09' },afterData: { massG: '0.1',volumeUl: '100' } });
     expect(audits?.[1]?.beforeData).toBe(Prisma.DbNull);
-    expect(tx.calibrationVolumeResult.update.mock.calls[0]?.[0].data).toMatchObject({ readingCount: 10,inaccuracyResult: 'pass',imprecisionResult: 'pass' });
+    expect(tx.calibrationVolumeResult.update).not.toHaveBeenCalled();
   });
 
   it('propagates a transaction failure without returning success or automatically replaying the transaction', async () => {

@@ -1,5 +1,6 @@
 import { parseRange } from '@/domain/range';
 import { resolveZ } from '@/domain/z-factor';
+import type { ChannelType } from '@prisma/client';
 import { getEnv } from '@/lib/env';
 import { BusinessRuleError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/errors';
 import { authorizeWrite, type Actor } from '@/lib/rbac';
@@ -15,7 +16,7 @@ export async function listResources(actor: Actor, resource: Resource, raw: unkno
 }
 
 export async function createResource(actor: Actor, resource: Resource, raw: unknown, requestId: string) {
-  authorizeWrite(actor, ['instruments','users'].includes(resource));
+  authorizeWrite(actor, resource==='users');
   switch (resource) {
     case 'customers': return transaction(async (tx) => {
       const customer = await tx.customer.create({ data: { ...customerSchema.parse(raw),createdBy: actor.id } });
@@ -42,7 +43,7 @@ async function createRange(actor: Actor, raw: unknown, requestId: string) {
   try { derived = parseRange(input.rangeLabel,input.channel); } catch { throw new ValidationError('Invalid volume range'); }
   if (input.limits.length!==derived.timesToTest || derived.points.some((point) => input.limits.filter((limit) => limit.testPointPct===point.pct).length!==1)) throw new ValidationError('Capture exactly one limit pair for each planned test point');
   return transaction(async (tx) => {
-    const range = await tx.rangeThreshold.create({ data: { rangeLabel: input.rangeLabel,channel: input.channel,make: input.make,model: input.model,
+    const range = await tx.rangeThreshold.create({ data: { rangeLabel: input.rangeLabel,channel: input.channel as ChannelType,make: input.make,model: input.model,
       rangeMinUl: derived.min?.toString() ?? null,rangeMaxUl: derived.max.toString(),channelCount: derived.channelCount,timesToTest: derived.timesToTest,repeats: derived.repeats } });
     for (const limit of input.limits) {
       const point = derived.points.find((candidate) => candidate.pct===limit.testPointPct);

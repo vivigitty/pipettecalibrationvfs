@@ -352,6 +352,8 @@ enum ChannelType {
   single
   eight
   twelve
+  sixteen
+  twenty_four
 
   @@map("channel_type")
 }

@@ -67,7 +67,8 @@ const styles = StyleSheet.create({
   customerName: {
     fontWeight: 700,
     fontSize: 13,
-    marginBottom: 8,
+    lineHeight: 1.2,
+    marginBottom: 3,
   },
 
   logo: {

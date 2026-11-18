@@ -1,22 +1,22 @@
 import Decimal from 'decimal.js';
 const Measurement = Decimal.clone({ precision: 50 });
 
-/** FR-02, FR-03: fixed volume has one test; variable volume has three. */
-export function parseRange(label: string, channel: 'single' | 'eight' | 'twelve') {
+/** FR-02, FR-03: fixed volume has one test; variable volume points depend on upper range. */
+export function parseRange(label: string, channel: 'single' | 'eight' | 'twelve' | 'sixteen' | 'twenty_four') {
   if (!/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(label)) throw new Error('Invalid volume range');
   const [lower, upper] = label.split('-');
   if (!lower) throw new Error('Volume range is required');
   const max = new Measurement(upper ?? lower);
   const min = upper ? new Measurement(lower) : null;
   if (max.lte(0) || (min && (min.lte(0) || min.gte(max)))) throw new Error('Invalid volume range');
-  const channelCount = { single: 1, eight: 8, twelve: 12 }[channel];
-  const points = min ? [10, 50, 100] : [100];
+  const channelCount = { single: 1, eight: 8, twelve: 12, sixteen: 16, twenty_four: 24 }[channel];
+  const points = derivePoints(min,max);
   return { min, max, channelCount, timesToTest: points.length, repeats: min ? channelCount : 1,
-    points: points.map((pct) => ({ pct, volume: max.mul(pct).div(100) })) };
+    points: points.map((point) => ({ pct: point.pct,volume: point.volume })) };
 }
 
 /** FR-12: one lot per volume by default, one per channel when selected. */
-export function planLots(label: string, channel: 'single' | 'eight' | 'twelve', isPerChannel: boolean) {
+export function planLots(label: string, channel: 'single' | 'eight' | 'twelve' | 'sixteen' | 'twenty_four', isPerChannel: boolean) {
   const range = parseRange(label, channel);
   let lotNo = 0;
   return range.points.flatMap(({ volume }) => Array.from(
@@ -24,4 +24,12 @@ export function planLots(label: string, channel: 'single' | 'eight' | 'twelve', 
       lotNo: ++lotNo, nominalVolumeUl: volume.toString(), channelNo: isPerChannel ? index + 1 : null,
     }),
   ));
+}
+
+function derivePoints(min: Decimal | null,max: Decimal) {
+  if (!min) return [{ pct: 100,volume: max }];
+  if (max.eq('2.5')) return [{ pct: 40,volume: new Measurement(1) },{ pct: 100,volume: max }];
+  if (max.lt('2.5') && max.gte('2')) return [{ pct: 50,volume: new Measurement(1) },{ pct: 100,volume: new Measurement(2) }];
+  if (max.lt('2')) return [{ pct: 100,volume: new Measurement(1) }];
+  return [10,50,100].map((pct) => ({ pct,volume: pct===10 && max.mul(0.1).lt(1) ? new Measurement(1) : max.mul(pct).div(100) }));
 }

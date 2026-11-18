@@ -17,7 +17,16 @@ describe('FR-02 FR-03 FR-12 range and lot planning', () => {
     expect(planLots('10-100', 'eight', false).map((lot) => lot.nominalVolumeUl)).toEqual(['10', '50', '100']);
     expect(planLots('10-100', 'eight', true)).toHaveLength(24);
     expect(planLots('10-100', 'twelve', true)).toHaveLength(36);
+    expect(planLots('10-100', 'sixteen', true)).toHaveLength(48);
     expect(planLots('50', 'single', false)).toHaveLength(1);
+  });
+  it('uses low-volume special lot planning rules', () => {
+    expect(planLots('1-2.5', 'single', false).map((lot) => lot.nominalVolumeUl)).toEqual(['1', '2.5']);
+    expect(planLots('1-2.4', 'single', false).map((lot) => lot.nominalVolumeUl)).toEqual(['1', '2']);
+    expect(planLots('1-1.9', 'single', false).map((lot) => lot.nominalVolumeUl)).toEqual(['1']);
+  });
+  it('clamps 10% test point to 1uL for other variable ranges', () => {
+    expect(planLots('1-3', 'single', false).map((lot) => lot.nominalVolumeUl)).toEqual(['1', '1.5', '3']);
   });
 });
 
@@ -42,6 +51,10 @@ describe('FR-13 FR-14 golden certificate statistics', () => {
     const volumes = [...Array<string>(10).fill('98'), ...Array<string>(70).fill('100')];
     expect(compareLimit(statistics(volumes, '100').inaccuracyActualPct, '1')).toBe('pass');
     expect(compareLimit(statistics(volumes.slice(0, 10), '100').inaccuracyActualPct, '1')).toBe('fail');
+  });
+  it('applies channel multiplier to inaccuracy expected volume', () => {
+    expect(compareLimit(statistics(Array<string>(10).fill('800'), '100', 8).inaccuracyActualPct, '1')).toBe('pass');
+    expect(compareLimit(statistics(Array<string>(10).fill('100'), '100', 8).inaccuracyActualPct, '1')).toBe('fail');
   });
 });
 

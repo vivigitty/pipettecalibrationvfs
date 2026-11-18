@@ -56,17 +56,6 @@ export async function saveLot(actor: Actor, sessionId: string, lotNo: number, ra
       const reading = await tx.calibrationReading.upsert({ where: { calibrationLotId_readingNo: { calibrationLotId: lot.id,readingNo: index+1 } },create: data,update: { massG,volumeUl: data.volumeUl } });
       audits.push({ entityType: 'calibration_reading',entityId: reading.id,action: 'save',before,after: reading });
     }
-    const updatedLot = await tx.calibrationLot.update({ where: { id: lot.id },data: statistics(volumes,lot.nominalVolumeUl.toString()) });
-    audits.push({ entityType: 'calibration_lot',entityId: lot.id,action: 'save',before: lot,after: updatedLot });
-    const pooledLots = await tx.calibrationLot.findMany({ where: { calibrationVolumeResultId: lot.calibrationVolumeResultId },take: 12 });
-    const readings = await tx.calibrationReading.findMany({ where: { calibrationLotId: { in: pooledLots.map((row) => row.id) } },take: 120 });
-    const volume = await tx.calibrationVolumeResult.findUniqueOrThrow({ where: { id: lot.calibrationVolumeResultId } });
-    const stats = statistics(readings.map((reading) => reading.volumeUl.toString()),volume.nominalVolumeUl.toString());
-    const isComplete = readings.length===pooledLots.length*10;
-    const updatedVolume = await tx.calibrationVolumeResult.update({ where: { id: volume.id },data: { ...stats,readingCount: readings.length,
-      inaccuracyResult: isComplete ? compareLimit(stats.inaccuracyActualPct,volume.inaccuracyLimitPct.toString()) : 'pending',
-      imprecisionResult: isComplete ? compareLimit(stats.imprecisionActualPct,volume.imprecisionLimitPct.toString()) : 'pending' } });
-    audits.push({ entityType: 'calibration_volume_result',entityId: volume.id,action: 'recalculate',before: volume,after: updatedVolume });
     await recordAudits(tx,actor,requestId,audits);
   });
   return sessionDetail(sessionId,actor.role==='executive');
@@ -76,12 +65,33 @@ export async function completeSession(actor: Actor, sessionId: string, requestId
   authorizeWrite(actor);
   await transaction(async (tx) => {
     const session = await lockSession(tx,sessionId);
-    const [lots,readings,volumes] = await Promise.all([tx.calibrationLot.count({ where: { calibrationSessionId: sessionId } }),tx.calibrationReading.count({ where: { calibrationSessionId: sessionId } }),tx.calibrationVolumeResult.findMany({ where: { calibrationSessionId: sessionId },take: 3 })]);
+    const [lots,readings,volumes,range] = await Promise.all([
+      tx.calibrationLot.findMany({ where: { calibrationSessionId: sessionId },take: 36 }),
+      tx.calibrationReading.findMany({ where: { calibrationSessionId: sessionId },take: 360 }),
+      tx.calibrationVolumeResult.findMany({ where: { calibrationSessionId: sessionId },take: 3 }),
+      tx.rangeThreshold.findUniqueOrThrow({ where: { id: session.rangeThresholdId } }),
+    ]);
     const asset = await lockAsset(tx,session.assetId);
-    const inaccuracyStatus = combineStatuses(volumes.map((row) => row.inaccuracyResult));
-    const imprecisionStatus = combineStatuses(volumes.map((row) => row.imprecisionResult));
+    if (lots.length===0 || readings.length!==lots.length*10) throw new BusinessRuleError('READINGS_REQUIRED','Every lot requires ten saved readings before completion');
+
+    for (const lot of lots) {
+      const lotReadings = readings.filter((reading) => reading.calibrationLotId===lot.id).map((reading) => reading.volumeUl.toString());
+      const lotStats = statistics(lotReadings,lot.nominalVolumeUl.toString(),range.channelCount);
+      await tx.calibrationLot.update({ where: { id: lot.id },data: lotStats });
+    }
+
+    const refreshedVolumes = [];
+    for (const volume of volumes) {
+      const pooledLots = lots.filter((lot) => lot.calibrationVolumeResultId===volume.id);
+      const pooledReadings = readings.filter((reading) => pooledLots.some((lot) => lot.id===reading.calibrationLotId));
+      const stats = statistics(pooledReadings.map((reading) => reading.volumeUl.toString()),volume.nominalVolumeUl.toString(),range.channelCount);
+      refreshedVolumes.push(await tx.calibrationVolumeResult.update({ where: { id: volume.id },data: { ...stats,readingCount: pooledReadings.length,
+        inaccuracyResult: compareLimit(stats.inaccuracyActualPct,volume.inaccuracyLimitPct.toString()),
+        imprecisionResult: compareLimit(stats.imprecisionActualPct,volume.imprecisionLimitPct.toString()) } }));
+    }
+    const inaccuracyStatus = combineStatuses(refreshedVolumes.map((row) => row.inaccuracyResult));
+    const imprecisionStatus = combineStatuses(refreshedVolumes.map((row) => row.imprecisionResult));
     const finalStatus = combineStatuses([inaccuracyStatus,imprecisionStatus]);
-    if (lots===0 || readings!==lots*10 || finalStatus==='pending') throw new BusinessRuleError('READINGS_REQUIRED','Every lot requires ten saved readings before completion');
     await tx.calibrationSession.update({ where: { id: sessionId },data: { inaccuracyStatus,imprecisionStatus,finalStatus,status: 'completed',endTime: new Date() } });
     await tx.asset.update({ where: { id: session.assetId },data: { progress: 'completed' } });
     await recordAudit(tx,actor,requestId,'calibration_session',sessionId,'complete',session);
