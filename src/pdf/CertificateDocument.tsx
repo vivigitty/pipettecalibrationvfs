@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
   page: {
     paddingTop: 26,
     paddingHorizontal: 42,
-    paddingBottom: 95,
+    paddingBottom: 45,
     fontFamily: 'Helvetica',
     fontSize: 7.5,
     color: '#111111',
@@ -262,14 +262,14 @@ const styles = StyleSheet.create({
   },
 
  signatureBlock: {
-  marginTop: 8,
+  marginTop: 0,
   alignItems: 'flex-end',
   paddingRight: 8,
 },
 
 signatureImage: {
-  width: 90,
-  height: 28,
+  width: 120,
+  height: 70,
   objectFit: 'contain',
 },
 
