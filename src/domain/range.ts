@@ -31,5 +31,22 @@ function derivePoints(min: Decimal | null,max: Decimal) {
   if (max.eq('2.5')) return [{ pct: 40,volume: new Measurement(1) },{ pct: 100,volume: max }];
   if (max.lt('2.5') && max.gte('2')) return [{ pct: 50,volume: new Measurement(1) },{ pct: 100,volume: new Measurement(2) }];
   if (max.lt('2')) return [{ pct: 100,volume: new Measurement(1) }];
-  return [10,50,100].map((pct) => ({ pct,volume: pct===10 && max.mul(0.1).lt(1) ? new Measurement(1) : max.mul(pct).div(100) }));
+  return [10,50,100].map((pct) => {
+    const calculatedVolume = max.mul(pct).div(100);
+
+    if (pct === 10) {
+      const minimumVolume = new Measurement(1);
+
+      return {
+        pct,
+        volume: calculatedVolume.lt(minimumVolume)
+          ? minimumVolume
+          : calculatedVolume.lt(min)
+            ? min
+            : calculatedVolume
+      };
+    }
+
+    return { pct, volume: calculatedVolume };
+  });
 }
