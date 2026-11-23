@@ -18,6 +18,7 @@ const labs = [{ id: id(40),processDate: '2026-11-07T00:00:00.000Z',serviceMode: 
 export function previewList(resource: Resource, query: z.infer<typeof querySchema>) {
   const rows: Row[] = { customers,ranges,assets,instruments,'lab-dimensions': labs,users: [] }[resource];
   const matched = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query.search.toLowerCase()) && (!query.progress || row.progress===query.progress) && (!query.customerId || row.customerId===query.customerId) && !(resource==='assets' && query.dueDate)
+    && (resource!=='lab-dimensions' || !query.processDate || (typeof row.processDate==='string' && row.processDate.slice(0,10)===query.processDate))
     && (resource!=='instruments' || ((!query.instrumentType || row.instrumentType===query.instrumentType) && (!query.validOn || (typeof row.calibrationDueDate==='string' && row.calibrationDueDate.slice(0,10)>=query.validOn)))));
   return { data: matched.slice((query.page-1)*query.pageSize,query.page*query.pageSize),meta: { page: query.page,pageSize: query.pageSize,total: matched.length } };
 }

@@ -41,7 +41,8 @@ export async function listInventory(resource: Resource, query: z.infer<typeof qu
       return { data,meta: { ...query,total } };
     }
     case 'lab-dimensions': {
-      const [data,total] = await db.$transaction([db.labDimension.findMany({ ...paging,orderBy: { createdAt: 'desc' } }),db.labDimension.count()]);
+      const where = query.processDate ? { processDate: new Date(query.processDate) } : {};
+      const [data,total] = await db.$transaction([db.labDimension.findMany({ where,...paging,orderBy: { createdAt: 'desc' } }),db.labDimension.count({ where })]);
       return { data,meta: { ...query,total } };
     }
     case 'users': {
@@ -59,7 +60,7 @@ async function listAssets(query: z.infer<typeof querySchema>) {
     ...(query.progress ? { progress: query.progress } : {}), ...(query.customerId ? { customerId: query.customerId } : {}),
     ...(query.dueDate ? { sessions: { some: { dueDate: { lte: new Date(query.dueDate) } } } } : {}),
   };
-  const [data,total] = await db.$transaction([db.asset.findMany({ where,skip: (query.page-1)*query.pageSize,take: query.pageSize,orderBy: { createdAt: 'desc' },include: { sessions: { select: { id: true,status: true,finalStatus: true,processDate: true,sessionNo: true },orderBy: { sessionNo: 'desc' },take: 1 } } }),db.asset.count({ where })]);
+  const [data,total] = await db.$transaction([db.asset.findMany({ where,skip: (query.page-1)*query.pageSize,take: query.pageSize,orderBy: { createdAt: 'desc' },include: { assignedLab: { select: { processDate: true } },sessions: { select: { id: true,status: true,finalStatus: true,processDate: true,sessionNo: true },orderBy: { sessionNo: 'desc' },take: 1 } } }),db.asset.count({ where })]);
   const [customers,ranges] = await Promise.all([db.customer.findMany({ where: { id: { in: data.map((row) => row.customerId) } } }),db.rangeThreshold.findMany({ where: { id: { in: data.map((row) => row.rangeThresholdId) } } })]);
   return {
     data: data.map((row) => {
@@ -68,6 +69,7 @@ async function listAssets(query: z.infer<typeof querySchema>) {
         ...row,
         latestSessionId: latest?.status==='completed' && latest.finalStatus==='pass' ? latest.id : null,
         latestProcessDate: latest?.processDate ?? null,
+        calibrationDate: row.progress==='not_started' ? row.assignedLab?.processDate ?? null : latest?.processDate ?? null,
         customerName: customers.find((customer) => customer.id===row.customerId)?.customerName,
         rangeLabel: ranges.find((range) => range.id===row.rangeThresholdId)?.rangeLabel,
         make: ranges.find((range) => range.id===row.rangeThresholdId)?.make,

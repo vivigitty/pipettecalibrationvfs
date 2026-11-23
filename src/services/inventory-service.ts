@@ -1,12 +1,12 @@
 import { parseRange } from '@/domain/range';
 import { resolveZ } from '@/domain/z-factor';
 import type { ChannelType } from '@prisma/client';
-import { getEnv } from '@/lib/env';
 import { BusinessRuleError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/errors';
 import { authorizeWrite, type Actor } from '@/lib/rbac';
-import { recordAudit } from '@/repositories/audit';
+import { recordAudit, recordAudits } from '@/repositories/audit';
 import { inventoryDb, listInventory, transaction } from '@/repositories/inventory';
-import { assetBatchSchema, customerSchema, instrumentSchema, labSchema, querySchema, rangeSchema, userSchema, type Resource } from '@/schemas/resources';
+import { loadZGrid } from '@/repositories/z-grid';
+import { assetAssignmentSchema, assetBatchSchema, customerSchema, instrumentSchema, labSchema, querySchema, rangeSchema, userSchema, type Resource } from '@/schemas/resources';
 import { previewList } from './preview-data';
 
 export async function listResources(actor: Actor, resource: Resource, raw: unknown) {
@@ -78,10 +78,26 @@ async function createLab(actor: Actor, raw: unknown, requestId: string) {
       const instrument = instruments.find((row) => row.id===id && row.instrumentType===type);
       if (!instrument || instrument.calibrationDueDate < new Date(input.processDate)) throw new BusinessRuleError('INSTRUMENT_EXPIRED','Select the correct instrument type with a valid calibration due date');
     }
-    const grid = await tx.zFactorReference.findMany({ where: { sourceVersion: getEnv().Z_SOURCE_VERSION } });
-    const resolved = resolveZ(grid.map((row) => ({ temperatureC: row.temperatureC.toString(),pressureKpa: row.pressureKpa.toString(),zValue: row.zValue.toString(),sourceVersion: row.sourceVersion })),input.ddWaterTempC,input.airPressureHpa);
+    const resolved = resolveZ(await loadZGrid(tx),input.ddWaterTempC,input.airPressureHpa);
     const lab = await tx.labDimension.create({ data: { ...input,processDate: new Date(input.processDate),calibratedByUserId: actor.id,zCorrectionValue: resolved.zCorrectionValue,zSourceVersion: resolved.sourceVersion } });
     await recordAudit(tx,actor,requestId,'lab_dimension',lab.id,'create',undefined,lab); return lab;
+  });
+}
+
+/** Pre-assigns an environmental condition (and so the calibration date) to not-started pipettes in bulk. */
+export async function assignAssets(actor: Actor, raw: unknown, requestId: string) {
+  authorizeWrite(actor);
+  const input = assetAssignmentSchema.parse(raw);
+  const assetIds = [...new Set(input.assetIds)];
+  return transaction(async (tx) => {
+    const lab = await tx.labDimension.findUnique({ where: { id: input.labDimensionId } });
+    if (!lab) throw new NotFoundError('Environmental condition not found');
+    const assets = await tx.asset.findMany({ where: { id: { in: assetIds } } });
+    if (assets.length!==assetIds.length) throw new NotFoundError('One or more pipettes were not found');
+    if (assets.some((asset) => asset.progress!=='not_started')) throw new BusinessRuleError('ASSET_NOT_PENDING','Only pipettes that have not started calibration can be assigned');
+    await tx.asset.updateMany({ where: { id: { in: assetIds } },data: { assignedLabDimensionId: lab.id } });
+    await recordAudits(tx,actor,requestId,assets.map((asset) => ({ entityType: 'asset' as const,entityId: asset.id,action: 'assign_environmental_condition',before: asset,after: { ...asset,assignedLabDimensionId: lab.id } })));
+    return { assigned: assetIds.length,labDimensionId: lab.id,processDate: lab.processDate };
   });
 }
 
@@ -89,7 +105,7 @@ export async function getAsset(actor: Actor, id: string) {
   if (actor.isPreview) {
     const asset = previewList('assets',querySchema.parse({})).data.find((row) => row.id===id);
     if (!asset) throw new NotFoundError();
-    return { asset,sessions: [],damages: [] };
+    return { asset: { ...asset,calibrationValidityMonths: 12 },sessions: [],damages: [] };
   }
   const asset = await inventoryDb.asset.findUnique({ where: { id } });
   if (!asset) throw new NotFoundError();
@@ -100,11 +116,11 @@ export async function getAsset(actor: Actor, id: string) {
 export async function getLabConditions(actor: Actor, id: string) {
   if (actor.isPreview) {
     const lab = previewList('lab-dimensions',querySchema.parse({})).data.find((row) => row.id===id);
-    if (!lab) throw new NotFoundError('Lab conditions not found');
+    if (!lab) throw new NotFoundError('Environmental condition not found');
     const instruments = previewList('instruments',querySchema.parse({})).data;
     return { ...lab,balance: instruments.find((row) => row.id===lab.balanceInstrumentId),air: instruments.find((row) => row.id===lab.airInstrumentId),water: instruments.find((row) => row.id===lab.waterThermometerInstrumentId) };
   }
   const lab = await inventoryDb.labDimension.findUnique({ where: { id },include: { balance: true,air: true,water: true } });
-  if (!lab) throw new NotFoundError('Lab conditions not found');
+  if (!lab) throw new NotFoundError('Environmental condition not found');
   return lab;
 }

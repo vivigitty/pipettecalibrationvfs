@@ -2,10 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -113,27 +112,31 @@ model Instrument {
 }
 
 model Asset {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  customerId       String               @map("customer_id") @db.Uuid
-  rangeThresholdId String               @map("range_threshold_id") @db.Uuid
-  serialNumber     String               @map("serial_number") @db.VarChar(100)
-  inventoryNumber  String               @unique @map("inventory_number") @db.VarChar(100)
-  customerAssetId  String?              @map("customer_asset_id") @db.VarChar(100)
-  invoiceNumber    String?              @map("invoice_number") @db.VarChar(100)
-  progress         AssetProgress        @default(not_started)
-  createdBy        String               @map("created_by") @db.Uuid
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
-  damages          AssetDamage[]
-  creator          User                 @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  customer         Customer             @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  range            RangeThreshold       @relation(fields: [rangeThresholdId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  sessions         CalibrationSession[]
+  id                        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId                String               @map("customer_id") @db.Uuid
+  rangeThresholdId          String               @map("range_threshold_id") @db.Uuid
+  serialNumber              String               @map("serial_number") @db.VarChar(100)
+  inventoryNumber           String               @unique @map("inventory_number") @db.VarChar(100)
+  customerAssetId           String?              @map("customer_asset_id") @db.VarChar(100)
+  invoiceNumber             String?              @map("invoice_number") @db.VarChar(100)
+  progress                  AssetProgress        @default(not_started)
+  calibrationValidityMonths Int                  @default(12) @map("calibration_validity_months") @db.SmallInt
+  assignedLabDimensionId    String?              @map("assigned_lab_dimension_id") @db.Uuid
+  createdBy                 String               @map("created_by") @db.Uuid
+  createdAt                 DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  damages                   AssetDamage[]
+  creator                   User                 @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer                  Customer             @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  range                     RangeThreshold       @relation(fields: [rangeThresholdId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedLab               LabDimension?        @relation(fields: [assignedLabDimensionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sessions                  CalibrationSession[]
 
   @@unique([id, customerId, rangeThresholdId], map: "uq_asset_ancestry")
   @@index([customerId, progress], map: "ix_assets_customer_progress")
   @@index([customerId, serialNumber], map: "ix_assets_customer_serial")
   @@index([rangeThresholdId], map: "ix_assets_range")
+  @@index([assignedLabDimensionId], map: "ix_assets_assigned_lab")
   @@map("assets")
 }
 
@@ -167,6 +170,7 @@ model LabDimension {
   createdAt                    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                    DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   sessions                     CalibrationSession[]
+  assignedAssets               Asset[]
   air                          Instrument           @relation("LabAir", fields: [airInstrumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   balance                      Instrument           @relation("LabBalance", fields: [balanceInstrumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   calibrator                   User                 @relation(fields: [calibratedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)

@@ -3,10 +3,10 @@ import { parseRange } from '@/domain/range';
 import { calibrationDates } from '@/domain/dates';
 import { resolveZ } from '@/domain/z-factor';
 import { loadIsoGrid } from '@/lib/iso-grid';
-import { getEnv } from '@/lib/env';
-import { inventoryDb } from '@/repositories/inventory';
+import { loadZGrid } from '@/repositories/z-grid';
+import { logger } from '@/lib/logger';
 import type { Actor } from '@/lib/rbac';
-import { ValidationError } from '@/lib/errors';
+import { AppError,ValidationError } from '@/lib/errors';
 
 export async function derivePreview(actor: Actor, resource: string, raw: unknown) {
   try {
@@ -20,10 +20,11 @@ export async function derivePreview(actor: Actor, resource: string, raw: unknown
       return calibrationDates(input.processDate,input.months);
     }
     const input = z.object({ temperature: z.string().max(30),pressure: z.string().max(30) }).parse(raw);
-    const grid = actor.isPreview ? (await loadIsoGrid()).map((row) => ({ temperatureC: row.temperature_c,pressureKpa: row.pressure_kpa,zValue: row.z_value,sourceVersion: row.source_version })) : (await inventoryDb.zFactorReference.findMany({ where: { sourceVersion: getEnv().Z_SOURCE_VERSION } })).map((row) => ({ temperatureC: row.temperatureC.toString(),pressureKpa: row.pressureKpa.toString(),zValue: row.zValue.toString(),sourceVersion: row.sourceVersion }));
+    const grid = actor.isPreview ? (await loadIsoGrid()).map((row) => ({ temperatureC: row.temperature_c,pressureKpa: row.pressure_kpa,zValue: row.z_value,sourceVersion: row.source_version })) : await loadZGrid();
     return resolveZ(grid,input.temperature,input.pressure);
   } catch (error) {
-    if (error instanceof z.ZodError) throw error;
+    if (error instanceof z.ZodError || error instanceof AppError) throw error;
+    logger.warn({ err: error,resource },'Derived value could not be computed');
     throw new ValidationError('Unable to derive values; check the input and reference data');
   }
 }

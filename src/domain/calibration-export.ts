@@ -6,7 +6,7 @@ export type ExportSession = {
   inventoryNumber: string; serialNumber: string; customerAssetId: string | null;
   customerName: string; address1: string; address2: string | null; email: string;
   phone1: string; phone2: string | null; contactName: string; department: string;
-  rangeLabel: string; channel: 'single' | 'eight' | 'twelve'; make: string; model: string;
+  rangeLabel: string; channel: 'single' | 'eight' | 'twelve' | 'sixteen' | 'twenty_four'; make: string; model: string;
   serviceMode: string; finalStatus: string; calibratedBy: string;
   processDate: Date; dueDate: Date; reminderDate: Date;
   ddWaterTempC: string; roomTempC: string; humidityPct: string; airPressureHpa: string; zCorrectionValue: string;

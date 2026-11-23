@@ -10,7 +10,7 @@ import { fields } from './form-fields';
 import { useResourceForm,zLabel } from './use-resource-form';
 
 export function ResourceForm({ resource,isReadOnly,onClose,initialRow,onSaved,prefillValues,canManageInstruments = true }: { resource: Exclude<Resource,'assets'>; isReadOnly: boolean; onClose: () => void; initialRow?: Row; onSaved?: (row: Row) => void; prefillValues?: Record<string,string>; canManageInstruments?: boolean }) {
-  const { form,values,plan,zFactor,save } = useResourceForm(resource,(saved) => {
+  const { form,values,plan,zFactor,hasZInputs,save } = useResourceForm(resource,(saved) => {
     const parsed = saved ? rowSchema.safeParse(saved) : null;
     if (parsed?.success) onSaved?.(parsed.data);
     onClose();
@@ -29,8 +29,8 @@ export function ResourceForm({ resource,isReadOnly,onClose,initialRow,onSaved,pr
       setCopyError('');
     } catch (error) { setCopyError(error instanceof Error ? error.message : 'Could not copy limits'); }
   };
-  return <section className="form-section"><div className="section-heading"><h2>New {resource==='lab-dimensions' ? 'lab conditions' : resource==='ranges' ? 'range configuration' : resource.slice(0,-1)}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close form" title="Close"><X size={18} /></button></div>
-    {resource==='lab-dimensions' ? <p className="muted">Balance, air thermometer and water thermometer are all required and must be calibrated for the process date.{!canManageInstruments ? ' Ask an administrator to add any missing instruments.' : ''}</p> : null}
+  return <section className="form-section"><div className="section-heading"><h2>New {resource==='lab-dimensions' ? 'environmental condition' : resource==='ranges' ? 'range configuration' : resource.slice(0,-1)}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close form" title="Close"><X size={18} /></button></div>
+    {resource==='lab-dimensions' ? <p className="muted">Balance, air thermometer and water thermometer are all required and must be calibrated for the calibration date.{!canManageInstruments ? ' Ask an administrator to add any missing instruments.' : ''}</p> : null}
     {quickInstrumentTarget ? <ResourceForm resource="instruments" isReadOnly={isReadOnly} prefillValues={{ instrumentType: quickInstrumentTarget.instrumentType }} onClose={() => { setQuickInstrumentTarget(null); }} onSaved={(row) => {
       const id = text(row,'id');
       if (!id) return;
@@ -46,7 +46,7 @@ export function ResourceForm({ resource,isReadOnly,onClose,initialRow,onSaved,pr
         {plan.isError ? <p className="field-error">{plan.error.message}</p> : <p className="muted">Test points: {plan.data?.timesToTest ?? '-'} · Repeats: {plan.data?.repeats ?? '-'}</p>}
         <div className="limits-grid">{plan.data?.points.map((point) => <div key={point.pct}><h4>{point.volume} uL · {point.pct}%</h4><label>Inaccuracy limit (%)<input required inputMode="decimal" {...form.register(`inaccuracy${point.pct}`)} /></label><label>Imprecision limit (%)<input required inputMode="decimal" {...form.register(`imprecision${point.pct}`)} /></label></div>)}</div>{copyError ? <p role="alert" className="field-error">{copyError}</p> : null}
       </div> : null}
-      {resource==='lab-dimensions' ? <div className="resolved-value"><span>Z correction</span><strong>{zLabel(zFactor.data) || '----'}</strong><span>uL/mg</span>{zFactor.isError ? <span className="field-error">{zFactor.error.message}</span> : null}</div> : null}
+      {resource==='lab-dimensions' ? <div className="resolved-value"><span>Z correction</span><strong>{hasZInputs ? zLabel(zFactor.data) || '----' : '----'}</strong><span>uL/mg</span>{!hasZInputs ? <span className="muted">Enter DD water temperature (15-30 C) and air pressure (800-1050 hPa) to calculate Z.</span> : zFactor.isError ? <span className="field-error">{zFactor.error.message}</span> : null}</div> : null}
       {save.isError ? <p role="alert" className="field-error">{save.error.message}</p> : null}
       <div className="form-actions"><button className="button secondary" type="button" onClick={onClose}>Cancel</button><button className="button primary" disabled={isReadOnly || save.isPending} type="submit"><Save size={16} />{save.isPending ? 'Saving...' : 'Save record'}</button></div>
     </form>

@@ -21,7 +21,8 @@ export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (
   const form = useForm<z.infer<typeof draftSchema>>({ resolver: zodResolver(draftSchema),defaultValues });
   const values = useWatch({ control: form.control });
   const plan = useQuery({ queryKey: ['range-plan',values.rangeLabel,values.channel],enabled: resource==='ranges' && Boolean(values.rangeLabel),queryFn: async () => planSchema.parse(await api(`range-plan?rangeLabel=${encodeURIComponent(values.rangeLabel ?? '')}&channel=${values.channel ?? 'single'}`)) });
-  const zFactor = useQuery({ queryKey: ['z-factor',values.ddWaterTempC,values.airPressureHpa],enabled: resource==='lab-dimensions' && Boolean(values.ddWaterTempC && values.airPressureHpa),queryFn: () => api(`z-factor?temperature=${encodeURIComponent(values.ddWaterTempC ?? '')}&pressure=${encodeURIComponent(values.airPressureHpa ?? '')}`) });
+  const hasZInputs = resource==='lab-dimensions' && isWithin(values.ddWaterTempC,15,30) && isWithin(values.airPressureHpa,800,1050);
+  const zFactor = useQuery({ queryKey: ['z-factor',values.ddWaterTempC,values.airPressureHpa],enabled: hasZInputs,queryFn: () => api(`z-factor?temperature=${encodeURIComponent(values.ddWaterTempC ?? '')}&pressure=${encodeURIComponent(values.airPressureHpa ?? '')}`) });
   const save = useMutation({ mutationFn: async (draft: Record<string,string>) => {
     const payload = buildPayload(resource,draft,plan.data?.points ?? []);
     return initialRow && resource==='ranges' ? api(`ranges/${text(initialRow,'id')}/limits`,'PATCH',{ limits: rangeSchema.parse(payload).limits }) : api(resource,'POST',payload);
@@ -29,7 +30,7 @@ export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (
     if (error instanceof ApiError) for (const issue of error.fields) form.setError(issue.field,{ message: issue.message });
     if (error instanceof z.ZodError) for (const issue of error.issues) form.setError(String(issue.path[0]),{ message: issue.message });
   } });
-  return { form,values,plan,zFactor,save };
+  return { form,values,plan,zFactor,hasZInputs,save };
 }
 
 function buildPayload(resource: Exclude<Resource,'assets'>, draft: Record<string,string>, points: { pct: number; volume: string }[]) {
@@ -40,6 +41,13 @@ function buildPayload(resource: Exclude<Resource,'assets'>, draft: Record<string
     case 'users': return userSchema.parse(draft);
     case 'ranges': return rangeSchema.parse({ rangeLabel: draft.rangeLabel,channel: draft.channel,make: draft.make,model: draft.model,limits: points.map((point) => ({ testPointPct: point.pct,inaccuracyLimitPct: draft[`inaccuracy${point.pct}`],imprecisionLimitPct: draft[`imprecision${point.pct}`] })) });
   }
+}
+
+/** Gate for the Z lookup only: the ISO table covers 15-30 C water and 800-1050 hPa, so partial input is not sent while typing. */
+function isWithin(value: string | undefined, min: number, max: number) {
+  if (!value || !/^\d+(\.\d+)?$/.test(value.trim())) return false;
+  const parsed = Number(value);
+  return parsed>=min && parsed<=max;
 }
 
 export function zLabel(data: unknown) { return text(data,'zCorrectionValue'); }

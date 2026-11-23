@@ -8,12 +8,14 @@ const mocks = vi.hoisted(() => {
     labDimension: { findUnique: vi.fn(),findUniqueOrThrow: vi.fn() },
     calibrationSession: { findFirst: vi.fn(),create: vi.fn() },
     calibrationVolumeResult: {
+      findMany: vi.fn(),
       create: vi.fn<(args: { data: Prisma.CalibrationVolumeResultUncheckedCreateInput }) => Promise<unknown>>(),
       findUniqueOrThrow: vi.fn(),
       update: vi.fn<(args: { data: Prisma.CalibrationVolumeResultUncheckedUpdateInput }) => Promise<unknown>>(),
     },
     calibrationLot: { createManyAndReturn: vi.fn<(args: { data: Prisma.CalibrationLotCreateManyInput[] }) => Promise<unknown>>(),findUnique: vi.fn(),update: vi.fn(),findMany: vi.fn() },
-    calibrationReading: { findMany: vi.fn(),upsert: vi.fn<(args: { create: Prisma.CalibrationReadingUncheckedCreateInput }) => Promise<unknown>>() },
+    calibrationReading: { findMany: vi.fn(),upsert: vi.fn<(args: { create: Prisma.CalibrationReadingUncheckedCreateInput }) => Promise<unknown>>(),update: vi.fn(),
+      createManyAndReturn: vi.fn<(args: { data: Prisma.CalibrationReadingCreateManyInput[] }) => Promise<unknown[]>>() },
     asset: { update: vi.fn() },
     auditLog: { createMany: vi.fn<(args: { data: Prisma.AuditLogCreateManyInput[] }) => Promise<unknown>>() },
   };
@@ -25,7 +27,7 @@ vi.mock('@/repositories/inventory', () => ({ transaction: mocks.transaction }));
 vi.mock('@/repositories/calibration', () => ({ lockAsset: mocks.lockAsset,lockSession: mocks.lockSession,sessionDetail: mocks.sessionDetail }));
 vi.mock('@/lib/rbac', () => ({ authorizeWrite: vi.fn() }));
 
-import { saveLot,startSession } from './calibration-service';
+import { saveLot,saveLots,startSession } from './calibration-service';
 
 const actor = { id: '00000000-0000-4000-8000-000000000001',displayName: 'Technician',role: 'technician' as const,isPreview: false };
 const labId = '00000000-0000-4000-8000-000000000040';
@@ -36,7 +38,7 @@ beforeEach(() => { vi.resetAllMocks(); });
 describe('Calibration transaction round trips and audit snapshots', () => {
   it.each([false,true])('starts a 36-lot session with batched writes and propagates audit failure (failure: %s)', async (auditFails) => {
     const { tx } = mocks;
-    mocks.lockAsset.mockResolvedValue({ id: 'asset',customerId: 'customer',rangeThresholdId: 'range',progress: 'not_started' });
+    mocks.lockAsset.mockResolvedValue({ id: 'asset',customerId: 'customer',rangeThresholdId: 'range',progress: 'not_started',calibrationValidityMonths: 6 });
     tx.calibrationSession.findFirst.mockResolvedValue(null);
     tx.rangeThreshold.findUniqueOrThrow.mockResolvedValue({ id: 'range',rangeLabel: '10-100',channel: 'twelve',isActive: true });
     tx.labDimension.findUnique.mockResolvedValue({ processDate: new Date('2026-10-01') });
@@ -50,10 +52,11 @@ describe('Calibration transaction round trips and audit snapshots', () => {
     tx.asset.update.mockResolvedValue({ id: 'asset',progress: 'in_progress' });
     if (auditFails) tx.auditLog.createMany.mockRejectedValue(new Error('Audit insert failed'));
 
-    const result = startSession(actor,'asset',{ labDimensionId: labId,nextCalibrationMonths: 12,oneDispensingPerChannel: true },'request');
+    const result = startSession(actor,'asset',{ labDimensionId: labId,oneDispensingPerChannel: true },'request');
     if (auditFails) await expect(result).rejects.toThrow('Audit insert failed');
     else await expect(result).resolves.toEqual({ id: 'session' });
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(tx.calibrationSession.create.mock.calls[0]?.[0]).toMatchObject({ data: { nextCalibrationMonths: 6,dueDate: new Date('2027-03-31') } });
 
     expect(tx.calibrationLot.createManyAndReturn).toHaveBeenCalledTimes(3);
     const lots = tx.calibrationLot.createManyAndReturn.mock.calls.flatMap(([args]) => args.data);
@@ -87,9 +90,41 @@ describe('Calibration transaction round trips and audit snapshots', () => {
     expect(tx.calibrationVolumeResult.update).not.toHaveBeenCalled();
   });
 
+  it('saves every lot in one request, writes only changed readings and recalculates completed volumes', async () => {
+    const { tx } = mocks;
+    mocks.lockSession.mockResolvedValue({ labDimensionId: labId,assetId: 'asset',rangeThresholdId: 'range' });
+    tx.labDimension.findUniqueOrThrow.mockResolvedValue({ zCorrectionValue: decimal('1') });
+    const lots = [1,2].map((lotNo) => ({ id: `lot-${lotNo}`,lotNo,nominalVolumeUl: decimal('100'),calibrationVolumeResultId: 'volume' }));
+    tx.calibrationLot.findMany.mockResolvedValue(lots);
+    const unchanged = { id: 'existing',calibrationLotId: 'lot-1',readingNo: 1,massG: decimal('0.1'),volumeUl: decimal('100') };
+    tx.calibrationReading.findMany.mockResolvedValueOnce([unchanged]);
+    tx.calibrationReading.createManyAndReturn.mockImplementation(({ data }) => Promise.resolve(data.map((row) => ({ id: `${row.calibrationLotId}-${row.readingNo}`,...row }))));
+    const saved = lots.flatMap((lot) => Array.from({ length: 10 },(_,index) => ({ calibrationLotId: lot.id,readingNo: index+1,volumeUl: decimal(index%2 ? '100' : '99.9') })));
+    tx.calibrationReading.findMany.mockResolvedValueOnce(saved);
+    tx.calibrationVolumeResult.findMany.mockResolvedValue([{ id: 'volume',nominalVolumeUl: decimal('100'),inaccuracyLimitPct: decimal('1'),imprecisionLimitPct: decimal('1') }]);
+    tx.rangeThreshold.findUniqueOrThrow.mockResolvedValue({ channelCount: 1 });
+    tx.calibrationVolumeResult.update.mockImplementation(({ data }) => Promise.resolve({ id: 'volume',...data }));
+    mocks.sessionDetail.mockResolvedValue({ saved: true });
+
+    const masses = Array.from({ length: 10 },() => '0.1');
+    await expect(saveLots(actor,'session',{ lots: [{ lotNo: 1,masses },{ lotNo: 2,masses }] },'request')).resolves.toEqual({ saved: true });
+
+    expect(tx.calibrationReading.update).not.toHaveBeenCalled();
+    expect(tx.calibrationReading.createManyAndReturn.mock.calls[0]?.[0].data).toHaveLength(19);
+    expect(tx.calibrationLot.update).toHaveBeenCalledTimes(2);
+    expect(tx.calibrationVolumeResult.update.mock.calls[0]?.[0].data).toMatchObject({ readingCount: 20,inaccuracyResult: 'pass',imprecisionResult: 'pass' });
+    expect(tx.auditLog.createMany.mock.calls[0]?.[0].data).toHaveLength(19);
+  });
+
+  it('rejects a bulk save that repeats a lot', async () => {
+    const masses = Array.from({ length: 10 },() => '0.1');
+    await expect(saveLots(actor,'session',{ lots: [{ lotNo: 1,masses },{ lotNo: 1,masses }] },'request')).rejects.toThrow('Each lot may be submitted only once');
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it('propagates a transaction failure without returning success or automatically replaying the transaction', async () => {
     mocks.lockAsset.mockRejectedValue(new Error('Transaction not found'));
-    await expect(startSession(actor,'asset',{ labDimensionId: labId,nextCalibrationMonths: 12 },'request')).rejects.toThrow('Transaction not found');
+    await expect(startSession(actor,'asset',{ labDimensionId: labId },'request')).rejects.toThrow('Transaction not found');
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.tx.auditLog.createMany).not.toHaveBeenCalled();
   });

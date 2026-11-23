@@ -114,14 +114,19 @@ textarea { min-height: 78px; resize: vertical; }
 .inline-form { padding: 20px; border-top: 1px solid var(--line); }
 .calibration-layout { display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 28px; }
 .workspace-main { min-width: 0; }
-.lot-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
-.lot-tabs button { min-width: 80px; flex-shrink: 0; border: none; background: transparent; color: var(--muted); padding: 12px; font-size: 12px; }
-.lot-tabs button[aria-selected='true'] { color: var(--teal); box-shadow: inset 0 -3px var(--teal); background: var(--mint); }
-.lot-tabs small { display: block; font-size: 10px; }
 .reading-section { background: white; padding: 20px; }
 .reading-table { table-layout: fixed; }
 .reading-table td { padding-block: 8px; }
 .reading-table input { margin: 0; padding: 7px 10px; font-variant-numeric: tabular-nums; }
+.lots-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 20px; margin-top: 16px; }
+.lot-card { border: 1px solid var(--line); padding: 12px; min-width: 0; }
+.lot-card h3 { margin: 0 0 8px; font-size: 13px; }
+.lot-card .reading-table th:first-child,.lot-card .reading-table td:first-child { width: 36px; }
+.observation-panel { display: grid; gap: 12px; margin: 12px 0 20px; }
+.observation-panel .damage-row { border: 1px solid var(--line); }
+.assignment-panel,.bulk-certificate-panel { margin: 0; border-bottom: 1px solid var(--line); }
+.certificate-options { grid-template-columns: minmax(0,1fr); }
+.bulk-certificate-panel .certificate-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .numeric { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .save-state { font-size: 10px; color: var(--muted); }
 .result-sidebar { border-left: 1px solid var(--line); padding-left: 24px; }

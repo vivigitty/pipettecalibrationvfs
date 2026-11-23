@@ -12,12 +12,13 @@ function optionLabel(resource: Resource,row: Row) {
   return resource==='instruments' ? `${description} / Due ${text(row,'calibrationDueDate').slice(0,10)}` : description;
 }
 
-export function EntityPicker({ resource,label,value,onChange,instrumentType,validOn,isOptional = false,onCreateRequest,createLabel = 'Add new' }: { resource: Resource; label: string; value: string; onChange: (value: string) => void; instrumentType?: InstrumentType; validOn?: string; isOptional?: boolean; onCreateRequest?: () => void; createLabel?: string }) {
+export function EntityPicker({ resource,label,value,onChange,instrumentType,validOn,processDate,isOptional = false,onCreateRequest,createLabel = 'Add new' }: { resource: Resource; label: string; value: string; onChange: (value: string) => void; instrumentType?: InstrumentType; validOn?: string; processDate?: string; isOptional?: boolean; onCreateRequest?: () => void; createLabel?: string }) {
   const [search,setSearch] = useState('');
-  const query = useQuery({ queryKey: [resource,'picker',search,instrumentType,validOn],queryFn: async () => {
+  const query = useQuery({ queryKey: [resource,'picker',search,instrumentType,validOn,processDate],queryFn: async () => {
     const params = new URLSearchParams({ pageSize: '100',search });
     if (instrumentType) params.set('instrumentType',instrumentType);
     if (validOn) params.set('validOn',validOn);
+    if (processDate) params.set('processDate',processDate);
     return listSchema.parse(await api(`${resource}?${params}`));
   } });
   const options = query.data?.data ?? [];

@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { NotFoundError } from '@/lib/errors';
 import type { Actor } from '@/lib/rbac';
 import { idSchema,resourceSchema } from '@/schemas/resources';
-import { completeSession,createDamage,getSession,saveLot,startSession } from './calibration-service';
-import { createResource,getAsset,getLabConditions,listResources } from './inventory-service';
+import { completeSession,createDamage,getSession,saveLot,saveLots,startSession } from './calibration-service';
+import { assignAssets,createResource,getAsset,getLabConditions,listResources } from './inventory-service';
 import { derivePreview } from './preview-service';
 import { updateLimits,updateUser } from './maintenance-service';
 
@@ -29,6 +29,7 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
 export async function writeApi(actor: Actor, method: string, parts: string[], raw: unknown, requestId: string) {
   const [resource,id,action,lot] = parts;
   if (method==='POST' && parts.length===1) return createResource(actor,resourceSchema.parse(resource),raw,requestId);
+  if (method==='POST' && resource==='assets' && id==='assignments' && parts.length===2) return assignAssets(actor,raw,requestId);
   const resourceId = idSchema.parse(id);
   if (method==='PATCH' && resource==='users' && parts.length===2) return updateUser(actor,resourceId,raw,requestId);
   if (method==='PATCH' && resource==='ranges' && action==='limits' && parts.length===3) return updateLimits(actor,resourceId,raw,requestId);
@@ -39,6 +40,7 @@ export async function writeApi(actor: Actor, method: string, parts: string[], ra
     const { downloadSessionCertificate } = await import('./certificate-service');
     return downloadSessionCertificate(actor,resourceId,raw);
   }
+  if (method==='PATCH' && resource==='sessions' && action==='lots' && parts.length===3) return saveLots(actor,resourceId,raw,requestId);
   if (method==='PATCH' && resource==='sessions' && action==='lots' && parts.length===4) return saveLot(actor,resourceId,z.coerce.number().int().min(1).max(36).parse(lot),raw,requestId);
   throw new NotFoundError('Endpoint not found');
 }
