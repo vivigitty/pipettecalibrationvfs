@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { upsert } = vi.hoisted(() => ({ upsert: vi.fn() }));
 vi.mock('./db', () => ({ db: { user: { upsert } } }));
 vi.mock('next-auth', async () => ({ CredentialsSignin: (await import('@auth/core/errors')).CredentialsSignin }));
-import { requestAccess } from './access-request';
+import { recordAccessRequest, requestAccess } from './access-request';
 
 const identity = { id: '00000000-0000-4000-8000-000000000001', email: 'person@example.org' };
 
@@ -26,6 +26,19 @@ describe('Verified signup access requests', () => {
   it('allows an approved account with a matching email', async () => {
     upsert.mockResolvedValue({ email: 'PERSON@example.org', isActive: true, displayName: 'Lab User' });
     expect(await requestAccess(identity)).toEqual({ ...identity, name: 'Lab User' });
+  });
+  it('files an inactive request at signup without touching an existing record', async () => {
+    upsert.mockResolvedValue({ ...identity, isActive: false });
+    expect(await recordAccessRequest(identity)).toBe(true);
+    expect(upsert).toHaveBeenCalledWith({
+      where: { externalSubject: identity.id },
+      create: { externalSubject: identity.id, email: identity.email, displayName: identity.email, role: 'executive', isActive: false },
+      update: {},
+    });
+  });
+  it('does not fail signup when the email already belongs to another app user', async () => {
+    upsert.mockRejectedValue(new Error('Unique constraint failed on email'));
+    expect(await recordAccessRequest(identity)).toBe(false);
   });
   it('does not link identities by email', async () => {
     upsert.mockResolvedValue({ email: 'another@example.org', isActive: true });

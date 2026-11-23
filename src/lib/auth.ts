@@ -2,8 +2,8 @@
 import NextAuth, { type User } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
-import { verifyPassword } from './password-auth';
-import { requestAccess } from './access-request';
+import { UnconfirmedEmailError, verifyPassword } from './password-auth';
+import { EmailUnconfirmedError, requestAccess } from './access-request';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -13,7 +13,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { type: 'password' },
       },
       async authorize(credentials) {
-        const identity = await verifyPassword(credentials);
+        let identity: Awaited<ReturnType<typeof verifyPassword>>;
+        try {
+          identity = await verifyPassword(credentials);
+        } catch (error) {
+          if (error instanceof UnconfirmedEmailError) throw new EmailUnconfirmedError();
+          throw error;
+        }
         if (!identity) return null;
 
         return requestAccess(identity);
