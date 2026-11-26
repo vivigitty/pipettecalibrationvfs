@@ -12,7 +12,7 @@ const READINGS = 10;
 type Draft = { lots: { masses: string[] }[] };
 
 /** Every lot of the session on one page; one save stores all readings and recalculates the errors. */
-export function AllLotsForm({ sessionId,lots,isReadOnly }: { sessionId: string; lots: Row[]; isReadOnly: boolean }) {
+export function AllLotsForm({ sessionId,lots,isReadOnly,channelCount = 1 }: { sessionId: string; lots: Row[]; isReadOnly: boolean; channelCount?: number }) {
   const client = useQueryClient();
   const initial = (): Draft => ({ lots: lots.map((lot) => { const saved = rows(lot.readings); return { masses: Array.from({ length: READINGS },(_,index) => text(saved[index],'massG')) }; }) });
   const form = useForm<Draft>({ defaultValues: initial() });
@@ -61,7 +61,7 @@ export function AllLotsForm({ sessionId,lots,isReadOnly }: { sessionId: string; 
     <div className="section-heading"><h2>Readings <span className="muted">· {lots.length} lot{lots.length===1 ? '' : 's'}</span></h2><span className="save-state" role="status">{status}</span></div>
     <p className="muted">Enter all lots, then save once. Paste ten values into the first cell of a lot to fill it.</p>
     <div className="lots-grid">{lots.map((lot,lotIndex) => <section className="lot-card" key={text(lot,'id')} aria-label={`Lot ${text(lot,'lotNo')}`}>
-      <h3>Lot {text(lot,'lotNo')}<span className="muted"> · {text(lot,'nominalVolumeUl')} uL{text(lot,'channelNo') ? ` · Ch ${text(lot,'channelNo')}` : ''}</span></h3>
+      <h3>Lot {text(lot,'lotNo')}<span className="muted"> · {text(lot,'nominalVolumeUl')} uL{channelCount>1 && !text(lot,'channelNo') ? ` × ${channelCount}` : ''}{text(lot,'channelNo') ? ` · Ch ${text(lot,'channelNo')}` : ''}</span></h3>
       <table className="data-table reading-table"><thead><tr><th>#</th><th>Mass (g)</th><th>Volume (uL)</th></tr></thead><tbody>{Array.from({ length: READINGS },(_,index) => {
         const fieldError = form.formState.errors.lots?.[lotIndex]?.masses?.[index]?.message;
         return <tr key={index}><td>{String(index+1).padStart(2,'0')}</td><td><input aria-label={`Lot ${text(lot,'lotNo')} mass reading ${index+1}`} inputMode="decimal" disabled={isReadOnly} {...form.register(`lots.${lotIndex}.masses.${index}`)} onPaste={(event) => { paste(event,lotIndex); }} onKeyDown={(event) => { advance(event,lotIndex,index); }} />{fieldError ? <span className="field-error">{fieldError}</span> : null}</td><td className="numeric">{text(rows(lot.readings)[index],'volumeUl').slice(0,10) || '-'}</td></tr>;

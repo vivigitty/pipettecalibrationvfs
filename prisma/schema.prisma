@@ -26,6 +26,8 @@ model User {
   customers             Customer[]
   labs                  LabDimension[]
   limits                RangeThresholdLimit[]
+  signature             UserSignature?
+  masterAssignments     MasterInstrument[]
 
   @@map("users")
 }
@@ -95,17 +97,18 @@ model RangeThresholdLimit {
 }
 
 model Instrument {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  instrumentType     InstrumentType @map("instrument_type")
-  makeModel          String         @map("make_model") @db.VarChar(150)
-  serialNumber       String         @map("serial_number") @db.VarChar(100)
-  calibrationDueDate DateTime       @map("calibration_due_date") @db.Date
-  isActive           Boolean        @default(true) @map("is_active")
-  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  airLabs            LabDimension[] @relation("LabAir")
-  balanceLabs        LabDimension[] @relation("LabBalance")
-  waterLabs          LabDimension[] @relation("LabWater")
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instrumentType     InstrumentType     @map("instrument_type")
+  makeModel          String             @map("make_model") @db.VarChar(150)
+  serialNumber       String             @map("serial_number") @db.VarChar(100)
+  calibrationDueDate DateTime           @map("calibration_due_date") @db.Date
+  isActive           Boolean            @default(true) @map("is_active")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  airLabs            LabDimension[]     @relation("LabAir")
+  balanceLabs        LabDimension[]     @relation("LabBalance")
+  waterLabs          LabDimension[]     @relation("LabWater")
+  masterFor          MasterInstrument[]
 
   @@unique([serialNumber, instrumentType, calibrationDueDate], map: "uq_instrument_version")
   @@map("instruments")
@@ -120,7 +123,8 @@ model Asset {
   customerAssetId           String?              @map("customer_asset_id") @db.VarChar(100)
   invoiceNumber             String?              @map("invoice_number") @db.VarChar(100)
   progress                  AssetProgress        @default(not_started)
-  calibrationValidityMonths Int                  @default(12) @map("calibration_validity_months") @db.SmallInt
+  calibrationValidityMonths Int?                 @map("calibration_validity_months") @db.SmallInt
+  scheduledCalibrationDate  DateTime?            @map("scheduled_calibration_date") @db.Date
   assignedLabDimensionId    String?              @map("assigned_lab_dimension_id") @db.Uuid
   createdBy                 String               @map("created_by") @db.Uuid
   createdAt                 DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -138,6 +142,30 @@ model Asset {
   @@index([rangeThresholdId], map: "ix_assets_range")
   @@index([assignedLabDimensionId], map: "ix_assets_assigned_lab")
   @@map("assets")
+}
+
+/// The one master instrument per measurement-device type, pre-filled on new environmental conditions.
+model MasterInstrument {
+  instrumentType InstrumentType @id @map("instrument_type")
+  instrumentId   String         @map("instrument_id") @db.Uuid
+  assignedBy     String         @map("assigned_by") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  instrument     Instrument     @relation(fields: [instrumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assigner       User           @relation(fields: [assignedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("master_instruments")
+}
+
+/// Default certificate signature image for a login, stored as a data URL.
+model UserSignature {
+  userId       String   @id @map("user_id") @db.Uuid
+  imageDataUrl String   @map("image_data_url")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user         User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("user_signatures")
 }
 
 model ZFactorReference {

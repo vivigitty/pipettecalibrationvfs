@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useForm,useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +10,7 @@ import { api,ApiError,text,rows } from './api';
 import { fields } from './form-fields';
 
 const draftSchema = z.record(z.string(),z.string());
-const planSchema = z.object({ timesToTest: z.number(),repeats: z.number(),points: z.array(z.object({ pct: z.number(),volume: z.string() })) });
+const planSchema = z.object({ timesToTest: z.number(),repeats: z.number(),limitSource: z.string().nullish(),points: z.array(z.object({ pct: z.number(),volume: z.string(),suggested: z.object({ inaccuracyLimitPct: z.string(),imprecisionLimitPct: z.string() }).nullish() })) });
 
 export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (saved?: unknown) => void, initialRow?: Row, prefillValues?: Record<string,string>) {
   const client = useQueryClient();
@@ -21,6 +22,16 @@ export function useResourceForm(resource: Exclude<Resource,'assets'>, onSaved: (
   const form = useForm<z.infer<typeof draftSchema>>({ resolver: zodResolver(draftSchema),defaultValues });
   const values = useWatch({ control: form.control });
   const plan = useQuery({ queryKey: ['range-plan',values.rangeLabel,values.channel],enabled: resource==='ranges' && Boolean(values.rangeLabel),queryFn: async () => planSchema.parse(await api(`range-plan?rangeLabel=${encodeURIComponent(values.rangeLabel ?? '')}&channel=${values.channel ?? 'single'}`)) });
+  const planData = plan.data;
+  useEffect(() => {
+    // Pre-fill limits from the reference table for a new configuration; values the user typed are kept.
+    if (resource!=='ranges' || initialRow || !planData) return;
+    for (const point of planData.points) {
+      for (const [field,value] of [[`inaccuracy${point.pct}`,point.suggested?.inaccuracyLimitPct],[`imprecision${point.pct}`,point.suggested?.imprecisionLimitPct]] as const) {
+        if (!form.getFieldState(field).isDirty) form.setValue(field,value ?? '',{ shouldDirty: false });
+      }
+    }
+  },[planData,resource,initialRow,form]);
   const hasZInputs = resource==='lab-dimensions' && isWithin(values.ddWaterTempC,15,30) && isWithin(values.airPressureHpa,800,1050);
   const zFactor = useQuery({ queryKey: ['z-factor',values.ddWaterTempC,values.airPressureHpa],enabled: hasZInputs,queryFn: () => api(`z-factor?temperature=${encodeURIComponent(values.ddWaterTempC ?? '')}&pressure=${encodeURIComponent(values.airPressureHpa ?? '')}`) });
   const save = useMutation({ mutationFn: async (draft: Record<string,string>) => {

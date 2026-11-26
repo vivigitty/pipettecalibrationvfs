@@ -316,6 +316,12 @@ const display = (
   return new Decimal(value).toFixed(places);
 };
 
+/** Volume set label; multi-channel readings weigh every channel together, so show "30 × 8". */
+export const volumeSetLabel = (nominal: string, channelCount: number): string => {
+  const volume = display(nominal, 0);
+  return channelCount > 1 ? `${volume} µL × ${channelCount}` : `${volume} µL`;
+};
+
 const date = (value: string): string => {
   return format(parseISO(value), 'd-MMM-yy');
 };
@@ -424,7 +430,7 @@ function ReadingTable({
             header
             height={25}
           >
-            Volume Set {display(volume.nominalVolumeUl, 0)} µL
+            Volume Set {volumeSetLabel(volume.nominalVolumeUl, data.channelCount)}
           </Cell>
         ))}
       </View>
@@ -563,7 +569,9 @@ function ResultTable({
             wrap={false}
           >
             <Cell width="28%">
-              {display(volume.nominalVolumeUl, 0)}
+              {data.channelCount > 1
+                ? `${display(volume.nominalVolumeUl, 0)} × ${data.channelCount}`
+                : display(volume.nominalVolumeUl, 0)}
             </Cell>
 
             <Cell width="39%">

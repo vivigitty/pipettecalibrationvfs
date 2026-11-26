@@ -35,6 +35,20 @@ const decimal = (value: string) => new Prisma.Decimal(value);
 
 beforeEach(() => { vi.resetAllMocks(); });
 
+describe('Start calibration rules for validity and re-calibration', () => {
+  it('requires a calibration validity when none was assigned', async () => {
+    mocks.lockAsset.mockResolvedValue({ id: 'asset',customerId: 'customer',rangeThresholdId: 'range',progress: 'not_started',calibrationValidityMonths: null });
+    mocks.tx.calibrationSession.findFirst.mockResolvedValue(null);
+    await expect(startSession(actor,'asset',{ labDimensionId: labId },'request')).rejects.toThrow('Assign the calibration validity');
+  });
+
+  it('asks a technician to schedule a re-calibration instead of restarting a passed pipette', async () => {
+    mocks.lockAsset.mockResolvedValue({ id: 'asset',customerId: 'customer',rangeThresholdId: 'range',progress: 'completed',calibrationValidityMonths: 12 });
+    mocks.tx.calibrationSession.findFirst.mockResolvedValue({ sessionNo: 1,status: 'completed',finalStatus: 'pass' });
+    await expect(startSession(actor,'asset',{ labDimensionId: labId },'request')).rejects.toThrow('Schedule a re-calibration');
+  });
+});
+
 describe('Calibration transaction round trips and audit snapshots', () => {
   it.each([false,true])('starts a 36-lot session with batched writes and propagates audit failure (failure: %s)', async (auditFails) => {
     const { tx } = mocks;

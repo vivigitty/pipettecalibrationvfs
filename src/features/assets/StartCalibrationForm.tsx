@@ -28,7 +28,8 @@ export function StartCalibrationForm({ asset,defaultServicedBy,isReadOnly,canMan
   const [decision,setDecision] = useState<ObservationDecision>('undecided');
   const [isObservationFormOpen,setIsObservationFormOpen] = useState(true);
   const [observations,setObservations] = useState<Row[]>([]);
-  const form = useForm<z.input<typeof startSessionSchema>,unknown,z.output<typeof startSessionSchema>>({ resolver: zodResolver(startSessionSchema),defaultValues: { labDimensionId: text(asset,'assignedLabDimensionId'),oneDispensingPerChannel: false,servicedBy: defaultServicedBy } });
+  const form = useForm<z.input<typeof startSessionSchema>,unknown,z.output<typeof startSessionSchema>>({ resolver: zodResolver(startSessionSchema),defaultValues: { labDimensionId: text(asset,'assignedLabDimensionId'),oneDispensingPerChannel: false,servicedBy: defaultServicedBy,calibrationValidityMonths: '' } });
+  const hasValidity = Boolean(text(asset,'calibrationValidityMonths'));
   const labDimensionId = form.watch('labDimensionId');
   const start = useMutation({ mutationFn: (data: z.output<typeof startSessionSchema>) => api(`assets/${assetId}/sessions`,'POST',data),onSuccess: (data) => { router.push(`/calibrations/${text(data,'id')}`); } });
   const observe = useMutation({ mutationFn: (data: z.output<typeof damageSchema>) => api(`assets/${assetId}/damages`,'POST',data),onSuccess: async (saved) => {
@@ -43,6 +44,7 @@ export function StartCalibrationForm({ asset,defaultServicedBy,isReadOnly,canMan
     {hasLabForm ? <ResourceForm resource="lab-dimensions" isReadOnly={isReadOnly} canManageInstruments={canManageInstruments} onClose={() => { setHasLabForm(false); }} onSaved={(row) => { form.setValue('labDimensionId',text(row,'id'),{ shouldDirty: true,shouldValidate: true }); }} /> : null}
     <form id="start-calibration-form" onSubmit={(event) => { void form.handleSubmit((data) => { start.mutate(data); })(event); }}>
       <div className="form-grid"><div><Controller name="labDimensionId" control={form.control} render={({ field }) => <EntityPicker resource="lab-dimensions" label="Environmental condition" value={field.value} onChange={field.onChange} onCreateRequest={() => { setHasLabForm(true); }} createLabel="Add environmental condition" />} />{form.formState.errors.labDimensionId?.message ? <span className="field-error">{form.formState.errors.labDimensionId.message}</span> : null}</div>
+        {!hasValidity ? <label>Calibration validity (months)<input type="number" min="1" max="60" required {...form.register('calibrationValidityMonths')} /><span className="muted">Not yet assigned from the calibration jobs list; sets the next due date.</span>{form.formState.errors.calibrationValidityMonths?.message ? <span className="field-error">{form.formState.errors.calibrationValidityMonths.message}</span> : null}</label> : null}
         <label>Serviced by<input maxLength={120} {...form.register('servicedBy')} /><span className="muted">Defaults to you; change if another engineer performed the service.</span>{form.formState.errors.servicedBy?.message ? <span className="field-error">{form.formState.errors.servicedBy.message}</span> : null}</label></div>
       {labDimensionId ? <LabConditionsSummary id={labDimensionId} /> : null}
     </form>

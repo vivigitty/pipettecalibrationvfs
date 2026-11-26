@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseRange } from '@/domain/range';
+import { LIMIT_TABLE_SOURCE,suggestLimit } from '@/domain/limit-table';
 import { calibrationDates } from '@/domain/dates';
 import { resolveZ } from '@/domain/z-factor';
 import { loadIsoGrid } from '@/lib/iso-grid';
@@ -13,7 +14,8 @@ export async function derivePreview(actor: Actor, resource: string, raw: unknown
     if (resource==='range-plan') {
       const input = z.object({ rangeLabel: z.string().max(30),channel: z.enum(['single','eight','twelve','sixteen','twenty_four']) }).parse(raw);
       const plan = parseRange(input.rangeLabel,input.channel);
-      return { timesToTest: plan.timesToTest,repeats: plan.repeats,points: plan.points.map((point) => ({ pct: point.pct,volume: point.volume.toString() })) };
+      const points = plan.points.map((point) => ({ pct: point.pct,volume: point.volume.toString(),suggested: suggestLimit(plan.max,point.volume,plan.channelCount) }));
+      return { timesToTest: plan.timesToTest,repeats: plan.repeats,limitSource: points.some((point) => point.suggested) ? LIMIT_TABLE_SOURCE : null,points };
     }
     if (resource==='dates') {
       const input = z.object({ processDate: z.iso.date(),months: z.coerce.number().int().min(1).max(60) }).parse(raw);

@@ -19,12 +19,13 @@ export async function lockSession(tx: Prisma.TransactionClient, id: string) {
 export async function sessionDetail(id: string, isExecutive: boolean) {
   const session = await db.calibrationSession.findUnique({ where: { id } });
   if (!session) throw new NotFoundError('Session not found');
-  const [asset,lab,volumes,lots,readings] = await Promise.all([
+  const [asset,lab,range,volumes,lots,readings] = await Promise.all([
     db.asset.findUniqueOrThrow({ where: { id: session.assetId } }),db.labDimension.findUniqueOrThrow({ where: { id: session.labDimensionId } }),
+    db.rangeThreshold.findUniqueOrThrow({ where: { id: session.rangeThresholdId },select: { rangeLabel: true,make: true,model: true,channel: true,channelCount: true } }),
     db.calibrationVolumeResult.findMany({ where: { calibrationSessionId: id },orderBy: { nominalVolumeUl: 'asc' },take: 3 }),
     db.calibrationLot.findMany({ where: { calibrationSessionId: id },orderBy: { lotNo: 'asc' },take: 36 }),
     db.calibrationReading.findMany({ where: { calibrationSessionId: id },orderBy: { readingNo: 'asc' },take: 360 }),
   ]);
   const { deviceIp,entryLocation,startTime,endTime,...safeSession } = session;
-  return { session: isExecutive ? { ...safeSession,deviceIp,entryLocation,startTime,endTime } : safeSession,asset,lab,volumes,lots: lots.map((lot) => ({ ...lot,readings: readings.filter((reading) => reading.calibrationLotId===lot.id) })) };
+  return { session: isExecutive ? { ...safeSession,deviceIp,entryLocation,startTime,endTime } : safeSession,asset,lab,range,volumes,lots: lots.map((lot) => ({ ...lot,readings: readings.filter((reading) => reading.calibrationLotId===lot.id) })) };
 }

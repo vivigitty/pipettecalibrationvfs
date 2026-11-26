@@ -3,13 +3,15 @@ import { NotFoundError } from '@/lib/errors';
 import type { Actor } from '@/lib/rbac';
 import { idSchema,resourceSchema } from '@/schemas/resources';
 import { completeSession,createDamage,getSession,saveLot,saveLots,startSession } from './calibration-service';
-import { assignAssets,createResource,getAsset,getLabConditions,listResources } from './inventory-service';
+import { assignValidity,createResource,getAsset,getLabConditions,getMasterInstruments,getMySignature,listResources,saveMySignature,scheduleRecalibration,setMasterInstrument } from './inventory-service';
 import { derivePreview } from './preview-service';
 import { updateLimits,updateUser } from './maintenance-service';
 
 export async function readApi(actor: Actor, parts: string[], query: unknown) {
   const [resource,id,action] = parts;
   if (parts.length===1 && resource && ['range-plan','dates','z-factor'].includes(resource)) return derivePreview(actor,resource,query);
+  if (resource==='instruments' && id==='masters' && parts.length===2) return getMasterInstruments(actor);
+  if (resource==='me' && id==='signature' && parts.length===2) return getMySignature(actor);
   if (parts.length===1) return listResources(actor,resourceSchema.parse(resource),query);
   if (resource==='assets' && id && parts.length===2) return getAsset(actor,idSchema.parse(id));
   if (resource==='lab-dimensions' && id && parts.length===2) return getLabConditions(actor,idSchema.parse(id));
@@ -29,7 +31,10 @@ export async function readApi(actor: Actor, parts: string[], query: unknown) {
 export async function writeApi(actor: Actor, method: string, parts: string[], raw: unknown, requestId: string) {
   const [resource,id,action,lot] = parts;
   if (method==='POST' && parts.length===1) return createResource(actor,resourceSchema.parse(resource),raw,requestId);
-  if (method==='POST' && resource==='assets' && id==='assignments' && parts.length===2) return assignAssets(actor,raw,requestId);
+  if (method==='POST' && resource==='assets' && id==='validity' && parts.length===2) return assignValidity(actor,raw,requestId);
+  if (method==='POST' && resource==='assets' && id==='recalibrations' && parts.length===2) return scheduleRecalibration(actor,raw,requestId);
+  if (method==='POST' && resource==='instruments' && id==='masters' && parts.length===2) return setMasterInstrument(actor,raw,requestId);
+  if (method==='PUT' && resource==='me' && id==='signature' && parts.length===2) return saveMySignature(actor,raw,requestId);
   const resourceId = idSchema.parse(id);
   if (method==='PATCH' && resource==='users' && parts.length===2) return updateUser(actor,resourceId,raw,requestId);
   if (method==='PATCH' && resource==='ranges' && action==='limits' && parts.length===3) return updateLimits(actor,resourceId,raw,requestId);

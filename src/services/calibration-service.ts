@@ -12,19 +12,22 @@ import { refreshSessionResults } from './session-results';
 
 export async function startSession(actor: Actor, assetId: string, raw: unknown, requestId: string) {
   authorizeWrite(actor);
-  const input = startSessionSchema.parse(raw);
+  const { calibrationValidityMonths: validityInput,...input } = startSessionSchema.parse(raw);
   return transaction(async (tx) => {
     const asset = await lockAsset(tx,assetId);
     const previous = await tx.calibrationSession.findFirst({ where: { assetId },orderBy: { sessionNo: 'desc' } });
     if (previous?.status==='in_progress') throw new ConflictError('A calibration is already in progress');
-    if (previous?.finalStatus==='pass' && actor.role!=='admin') throw new ConflictError('Only an administrator can initiate a correction to a passed session');
+    // A scheduled re-calibration re-opens the pipette as not started; restarting a completed pass without one is a correction.
+    if (previous?.finalStatus==='pass' && asset.progress==='completed' && actor.role!=='admin') throw new ConflictError('Schedule a re-calibration for this pipette, or ask an administrator to correct the passed session');
+    const validityMonths = validityInput ?? asset.calibrationValidityMonths;
+    if (!validityMonths) throw new BusinessRuleError('VALIDITY_REQUIRED','Assign the calibration validity before starting calibration');
     const [range,lab] = await Promise.all([tx.rangeThreshold.findUniqueOrThrow({ where: { id: asset.rangeThresholdId } }),tx.labDimension.findUnique({ where: { id: input.labDimensionId } })]);
     if (!lab) throw new NotFoundError('Environmental condition not found');
     const limits = await tx.rangeThresholdLimit.findMany({ where: { rangeThresholdId: range.id } });
     const derived = parseRange(range.rangeLabel,range.channel);
     if (!range.isActive || limits.length!==derived.timesToTest || derived.points.some((point) => !limits.some((limit) => limit.testPointPct===point.pct && point.volume.eq(limit.nominalVolumeUl.toString())))) throw new BusinessRuleError('LIMITS_REQUIRED','Capture all planned volume limits before calibration');
-    const dates = calibrationDates(lab.processDate.toISOString().slice(0,10),asset.calibrationValidityMonths);
-    const session = await tx.calibrationSession.create({ data: { ...input,nextCalibrationMonths: asset.calibrationValidityMonths,servicedBy: input.servicedBy ?? actor.displayName,assetId,customerId: asset.customerId,rangeThresholdId: range.id,sessionNo: (previous?.sessionNo ?? 0)+1,processDate: lab.processDate,dueDate: new Date(dates.dueDate),reminderDate: new Date(dates.reminderDate),createdBy: actor.id } });
+    const dates = calibrationDates(lab.processDate.toISOString().slice(0,10),validityMonths);
+    const session = await tx.calibrationSession.create({ data: { ...input,nextCalibrationMonths: validityMonths,servicedBy: input.servicedBy ?? actor.displayName,assetId,customerId: asset.customerId,rangeThresholdId: range.id,sessionNo: (previous?.sessionNo ?? 0)+1,processDate: lab.processDate,dueDate: new Date(dates.dueDate),reminderDate: new Date(dates.reminderDate),createdBy: actor.id } });
     const audits: AuditEntry[] = [];
     const plans = planLots(range.rangeLabel,range.channel,input.oneDispensingPerChannel);
     for (const limit of limits) {
@@ -34,7 +37,7 @@ export async function startSession(actor: Actor, assetId: string, raw: unknown, 
       audits.push(...lots.map((row): AuditEntry => ({ entityType: 'calibration_lot',entityId: row.id,action: 'create',after: row })));
       audits.push({ entityType: 'calibration_volume_result',entityId: volume.id,action: 'create',after: volume });
     }
-    const updatedAsset = await tx.asset.update({ where: { id: assetId },data: { progress: 'in_progress',assignedLabDimensionId: null } });
+    const updatedAsset = await tx.asset.update({ where: { id: assetId },data: { progress: 'in_progress',assignedLabDimensionId: null,scheduledCalibrationDate: null,calibrationValidityMonths: validityMonths } });
     audits.push({ entityType: 'asset',entityId: assetId,action: 'start_calibration',before: asset,after: updatedAsset },
       { entityType: 'calibration_session',entityId: session.id,action: 'start',after: session });
     await recordAudits(tx,actor,requestId,audits); return session;

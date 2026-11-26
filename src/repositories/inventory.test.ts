@@ -5,6 +5,7 @@ const { findMany,count } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedVal
 vi.mock('@/lib/db', () => ({
   db: {
     instrument: { findMany,count },
+    masterInstrument: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: (queries: Promise<unknown>[]) => Promise.all(queries),
   },
 }));
@@ -17,11 +18,17 @@ describe('Instrument picker filtering', () => {
 
     const where = {
       isActive: true,
-      OR: [{ makeModel: { contains: 'Testo',mode: 'insensitive' } },{ serialNumber: { contains: 'Testo',mode: 'insensitive' } }],
+      AND: [{ OR: [{ makeModel: { contains: 'Testo',mode: 'insensitive' } },{ serialNumber: { contains: 'Testo',mode: 'insensitive' } }] }],
       instrumentType: 'water_thermometer',
       calibrationDueDate: { gte: new Date('2026-11-13') },
     };
     expect(findMany).toHaveBeenCalledWith({ where,skip: 0,take: 100,orderBy: { calibrationDueDate: 'desc' } });
     expect(count).toHaveBeenCalledWith({ where });
+  });
+
+  it('matches every search word so multi-word searches find records', async () => {
+    findMany.mockClear();
+    await listInventory('instruments',querySchema.parse({ search: 'Testo 108' }));
+    expect(findMany.mock.calls[0]?.[0]).toMatchObject({ where: { AND: [{ OR: [{ makeModel: { contains: 'Testo' } },{ serialNumber: { contains: 'Testo' } }] },{ OR: [{ makeModel: { contains: '108' } },{ serialNumber: { contains: '108' } }] }] } });
   });
 });

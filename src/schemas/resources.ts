@@ -12,10 +12,16 @@ export type Resource = z.infer<typeof resourceSchema>;
 export const customerSchema = z.strictObject({ customerName: text(200), department: text(150), address1: text(250), address2: optionalText(250), email: z.email(), phone1: text(30), phone2: optionalText(30), contactName: text(150) });
 export const rangeSchema = z.strictObject({ rangeLabel: text(30), channel: z.enum(['single','eight','twelve','sixteen','twenty_four']), make: text(), model: text(), limits: z.array(z.strictObject({ testPointPct: z.number().int().min(1).max(100), inaccuracyLimitPct: decimalSchema, imprecisionLimitPct: decimalSchema })).min(1).max(3) });
 export const validityMonthsSchema = z.coerce.number().int().min(1).max(60);
-export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: optionalText(), calibrationValidityMonths: validityMonthsSchema.default(12) });
+export const assetSchema = z.strictObject({ customerId: idSchema, rangeThresholdId: idSchema, serialNumber: text(), inventoryNumber: text(), customerAssetId: optionalText(), invoiceNumber: optionalText() });
 export const assetBatchSchema = z.strictObject({ assets: z.array(assetSchema).min(1).max(50) });
-/** Bulk pre-assignment of an environmental condition (which carries the calibration date) to not-started pipettes. */
-export const assetAssignmentSchema = z.strictObject({ assetIds: z.array(idSchema).min(1).max(500), labDimensionId: idSchema });
+/** Bulk assignment of calibration validity (months until the next calibration is due) from the calibration jobs list. */
+export const assetValiditySchema = z.strictObject({ assetIds: z.array(idSchema).min(1).max(500), calibrationValidityMonths: validityMonthsSchema });
+/** Re-opens calibrated pipettes as calibration jobs planned for a future date. */
+export const recalibrationSchema = z.strictObject({ assetIds: z.array(idSchema).min(1).max(500), scheduledDate: dateSchema, calibrationValidityMonths: validityMonthsSchema.optional() });
+export const masterInstrumentSchema = z.strictObject({ instrumentId: idSchema });
+/** Data-URL signature image, limited to about 1 MB of image data. */
+export const signatureImageSchema = z.string().regex(/^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/, 'Upload a PNG, JPEG, GIF or WebP image').max(1000000, 'Signature image must be under 700 KB');
+export const userSignatureSchema = z.strictObject({ imageDataUrl: signatureImageSchema });
 export const instrumentSchema = z.strictObject({ instrumentType: z.enum(['balance','air_thermometer','water_thermometer']), makeModel: text(150), serialNumber: text(), calibrationDueDate: dateSchema });
 export type InstrumentType = z.infer<typeof instrumentSchema>['instrumentType'];
 export const labSchema = z.strictObject({ processDate: dateSchema, serviceMode: z.enum(['onsite','offsite']), balanceInstrumentId: idSchema, airInstrumentId: idSchema, waterThermometerInstrumentId: idSchema, ddWaterTempC: boundedDecimal('15','30'), roomTempC: boundedDecimal('15','30'), humidityPct: boundedDecimal('0','100'), airPressureHpa: boundedDecimal('800','1050') });
@@ -32,4 +38,4 @@ export const rowSchema = z.record(z.string(), z.unknown());
 export const listSchema = z.object({ data: z.array(rowSchema), meta: z.object({ page: z.number(), pageSize: z.number(), total: z.number() }) });
 export type Row = z.infer<typeof rowSchema>;
 export const exportQuerySchema = z.object({ from: dateSchema.optional(), to: dateSchema.optional() });
-export const startSessionSchema = z.strictObject({ labDimensionId: idSchema, oneDispensingPerChannel: z.boolean().default(false), servicedBy: optionalText(120) });
+export const startSessionSchema = z.strictObject({ labDimensionId: idSchema, oneDispensingPerChannel: z.boolean().default(false), servicedBy: optionalText(120), calibrationValidityMonths: z.union([validityMonthsSchema, z.literal('').transform(() => undefined)]).optional() });

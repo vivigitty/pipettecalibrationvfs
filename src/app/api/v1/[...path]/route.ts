@@ -28,3 +28,4 @@ async function mutation(request: Request, actor: Awaited<ReturnType<typeof curre
 export const GET = handle;
 export const POST = handle;
 export const PATCH = handle;
+export const PUT = handle;

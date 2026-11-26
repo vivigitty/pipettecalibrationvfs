@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import Decimal from 'decimal.js';
 import { describe,expect,it } from 'vitest';
 
-import { CertificateDocument } from './CertificateDocument';
+import { CertificateDocument,volumeSetLabel } from './CertificateDocument';
 import {
   certificateSchema,
   type CertificateData,
@@ -22,6 +22,7 @@ const data = {
   customerAssetId: 'LAB-001',
   invoiceNumber: 'INV-001',
   channel: 'single channel',
+  channelCount: 1,
   contactName: 'Sample Contact',
   email: 'sample@example.com',
   phone1: '0000000000',
@@ -82,6 +83,11 @@ function pageCount(bytes: Buffer) {
 }
 
 describe('Approved certificate layout', () => {
+  it('labels multi-channel volume sets with the channel count', () => {
+    expect(volumeSetLabel('30',8)).toBe('30 µL × 8');
+    expect(volumeSetLabel('30',1)).toBe('30 µL');
+  });
+
   it('defaults missing signature metadata to null', () => {
     const withoutSignature = { ...data,signatureUrl: undefined,signatureDate: undefined };
     const parsed = certificateSchema.parse(withoutSignature);

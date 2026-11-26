@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 export type SignatureDateMode = 'calibration' | 'current' | 'custom';
-export type CertificateOptions = { signatureDataUrl: string | undefined; signatureDateMode: SignatureDateMode; customSignatureDate: string };
+export type SignatureMode = 'default' | 'upload' | 'none';
+export type CertificateOptions = { signatureMode: SignatureMode; signatureDataUrl: string | undefined; signatureDateMode: SignatureDateMode; customSignatureDate: string };
 
 const problemSchema = z.object({ detail: z.string(),requestId: z.string().optional() });
 
@@ -10,7 +11,7 @@ export async function downloadCertificate(sessionId: string, options: Certificat
   const response = await fetch(`/api/v1/sessions/${sessionId}/certificate-download`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ signatureDataUrl: options.signatureDataUrl,signatureDateMode: options.signatureDateMode,customSignatureDate: options.signatureDateMode==='custom' ? options.customSignatureDate : undefined }),
+    body: JSON.stringify({ signatureMode: options.signatureMode,signatureDataUrl: options.signatureMode==='upload' ? options.signatureDataUrl : undefined,signatureDateMode: options.signatureDateMode,customSignatureDate: options.signatureDateMode==='custom' ? options.customSignatureDate : undefined }),
   });
   if (!response.ok) {
     const problem = problemSchema.safeParse(await response.json().catch(() => null));
